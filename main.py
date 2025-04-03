@@ -1,4 +1,8 @@
-# main.py - 커밋 문제 수정된 확정 패치 버전 (상태 저장 확실히 적용)
+# main.py - 최종 안정화 버전 전체 코드
+# ✅ 단계 상태 저장 및 다음 단계 진입 보장
+# ✅ 역할별 입력 제어, 비용 입력 조건 처리
+# ✅ SQLite 저장 및 리포트 표시 포함
+
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -95,20 +99,23 @@ def load_steps(site, year, month, cost_type):
     return df
 
 def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
-    with sqlite3.connect(DB_PATH) as conn:
-        if 금액컬럼:
-            conn.execute(f"""
-                UPDATE 절차상태
-                SET 상태=?, {금액컬럼}=?
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-            """, (상태, 금액, site, year, month, cost_type, step_no))
-        else:
-            conn.execute("""
-                UPDATE 절차상태
-                SET 상태=?
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-            """, (상태, site, year, month, cost_type, step_no))
-        conn.commit()
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            if 금액컬럼:
+                conn.execute(f"""
+                    UPDATE 절차상태
+                    SET 상태=?, {금액컬럼}=?
+                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                """, (상태, 금액, site, year, month, cost_type, step_no))
+            else:
+                conn.execute("""
+                    UPDATE 절차상태
+                    SET 상태=?
+                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                """, (상태, site, year, month, cost_type, step_no))
+            conn.commit()
+    except Exception as e:
+        st.error(f"DB 저장 오류: {e}")
 
 COST_INPUT_CONDITIONS = {
     ("2. 기성금 청구 및 수금", 3): "기성금",
