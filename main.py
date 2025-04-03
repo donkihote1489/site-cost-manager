@@ -1,4 +1,4 @@
-# main.py - 최종 통합 버전 (절차 흐름 + 권한 + 비용입력 + 리포트)
+# main.py - 수정된 패치 버전 (단계 완료 후 다음 단계 갱신 오류 해결)
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -6,14 +6,12 @@ from datetime import datetime
 
 DB_PATH = 'database.db'
 
-# 사용자 계정 (데모용)
 USERS = {
     "siteuser1": {"password": "1234", "role": "현장"},
     "office1": {"password": "abcd", "role": "본사 공무팀"},
     "finance1": {"password": "pass", "role": "경영지원부"}
 }
 
-# 절차 유형별 흐름 정의
 def get_procedure_flow():
     return {
         "1. 계약(변경)체결": [
@@ -50,7 +48,6 @@ def get_procedure_flow():
         ]
     }
 
-# 로그인 처리 함수
 def login_view():
     st.sidebar.header("🔐 로그인")
     username = st.sidebar.text_input("사용자 ID")
@@ -65,7 +62,6 @@ def login_view():
         else:
             st.sidebar.error("❌ 로그인 실패")
 
-# DB 초기화
 def init_db():
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute('''
@@ -78,7 +74,6 @@ def init_db():
             )
         ''')
 
-# 절차 초기화
 def initialize_procedure(site, year, month, cost_type):
     flow = get_procedure_flow()[cost_type]
     with sqlite3.connect(DB_PATH) as conn:
@@ -88,8 +83,8 @@ def initialize_procedure(site, year, month, cost_type):
                 (현장명, 연도, 월, 비용유형, 단계번호, 작업내용, 담당부서)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (site, year, month, cost_type, step_no, task, dept))
+        conn.commit()
 
-# 절차 불러오기
 def load_steps(site, year, month, cost_type):
     with sqlite3.connect(DB_PATH) as conn:
         df = pd.read_sql("""
@@ -99,7 +94,6 @@ def load_steps(site, year, month, cost_type):
         """, conn, params=(site, year, month, cost_type))
     return df
 
-# 상태 업데이트 / 비용 저장
 def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
     with sqlite3.connect(DB_PATH) as conn:
         if 금액컬럼:
@@ -114,15 +108,14 @@ def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None
                 SET 상태=?
                 WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
             """, (상태, site, year, month, cost_type, step_no))
+        conn.commit()
 
-# 비용 입력 조건
 COST_INPUT_CONDITIONS = {
     ("2. 기성금 청구 및 수금", 3): "기성금",
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 3): "노무비",
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 5): "투입비"
 }
 
-# --- 앱 실행 ---
 st.set_page_config(page_title="현장비용 관리", layout="wide")
 st.title("🏗️ 전문건설 현장비용 관리 시스템")
 init_db()
@@ -134,7 +127,6 @@ if 'logged_in' not in st.session_state:
 role = st.session_state.role
 st.sidebar.success(f"{role} 계정 로그인됨")
 
-# 기본 입력
 st.sidebar.header("📌 기본 정보 입력")
 site = st.sidebar.selectbox("현장명", ["화태백야", "제3연륙교"])
 year = st.sidebar.text_input("연도", value=str(datetime.now().year))
@@ -144,7 +136,6 @@ cost_type = st.sidebar.selectbox("비용유형 선택", list(get_procedure_flow(
 initialize_procedure(site, year, month, cost_type)
 df_steps = load_steps(site, year, month, cost_type)
 
-# 현재 진행할 단계
 latest_done = df_steps[df_steps['상태'] == '완료']['단계번호'].max()
 next_step = 1 if pd.isna(latest_done) else int(latest_done) + 1
 current = df_steps[df_steps['단계번호'] == next_step]
@@ -159,7 +150,6 @@ else:
     editable = (row['담당부서'] == role)
     if editable:
         상태 = st.radio("📌 상태", ["진행중", "완료"], index=0 if row['상태'] == '진행중' else 1, horizontal=True)
-
         key = (cost_type, row['단계번호'])
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
@@ -174,7 +164,6 @@ else:
     else:
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
 
-# 리포트
 if st.checkbox("📊 결과 리포트 보기"):
     with sqlite3.connect(DB_PATH) as conn:
         df_all = pd.read_sql("SELECT * FROM 절차상태", conn)
