@@ -1,4 +1,8 @@
-# main.py - 강제 저장 + 즉시 다음 단계로 넘어가는 확실한 버전
+# main.py - 최종 안정화 버전 전체 코드
+# ✅ 단계 상태 저장 및 다음 단계 진입 보장
+# ✅ 역할별 입력 제어, 비용 입력 조건 처리
+# ✅ SQLite 저장 및 리포트 표시 포함
+
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -21,6 +25,30 @@ def get_procedure_flow():
             (4, '계약 진행 요청', '본사 공무팀'),
             (5, '보증 등 발행 협력사 등록', '경영지원부'),
             (6, 'Kiscon사이트 등록', '본사 공무팀')
+        ],
+        "2. 기성금 청구 및 수금": [
+            (1, '기성 조서 작성', '현장'),
+            (2, '예상 기성 확인', '본사 공무팀'),
+            (3, '기성 확정', '현장'),
+            (4, '발행 요청 확인', '본사 공무팀'),
+            (5, '계산서 발행 협력사 등록', '경영지원부'),
+            (6, '기성금 수금', '경영지원부'),
+            (7, 'Kiscon 사이트 등록', '본사 공무팀')
+        ],
+        "3. 노무 및 협력업체 지급 및 투입비 입력": [
+            (1, '노무대장 작성', '현장'),
+            (2, '노무대장 확인', '본사 공무팀'),
+            (3, '노무비 신고', '경영지원부'),
+            (4, '보험료 확정', '경영지원부'),
+            (5, '하도급지킴이 등록 및 투입비 입력', '현장'),
+            (6, '하도급지킴이 확인', '본사 공무팀'),
+            (7, '지급 확인', '경영지원부')
+        ],
+        "4. 선금(외 기타)보증": [
+            (1, '선금 공문 접수', '현장'),
+            (2, '공문 보고', '본사 공무팀'),
+            (3, '보증 발행 등록', '경영지원부'),
+            (4, 'Kiscon 등록', '본사 공무팀')
         ]
     }
 
@@ -70,21 +98,24 @@ def load_steps(site, year, month, cost_type):
         """, conn, params=(site, year, month, cost_type))
     return df
 
-def update_step_force(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
-    with sqlite3.connect(DB_PATH) as conn:
-        if 금액컬럼:
-            conn.execute(f"""
-                UPDATE 절차상태
-                SET 상태=?, {금액컬럼}=?
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-            """, (상태, 금액, site, year, month, cost_type, step_no))
-        else:
-            conn.execute("""
-                UPDATE 절차상태
-                SET 상태=?
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-            """, (상태, site, year, month, cost_type, step_no))
-        conn.commit()
+def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            if 금액컬럼:
+                conn.execute(f"""
+                    UPDATE 절차상태
+                    SET 상태=?, {금액컬럼}=?
+                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                """, (상태, 금액, site, year, month, cost_type, step_no))
+            else:
+                conn.execute("""
+                    UPDATE 절차상태
+                    SET 상태=?
+                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                """, (상태, site, year, month, cost_type, step_no))
+            conn.commit()
+    except Exception as e:
+        st.error(f"DB 저장 오류: {e}")
 
 COST_INPUT_CONDITIONS = {
     ("2. 기성금 청구 및 수금", 3): "기성금",
@@ -125,19 +156,28 @@ else:
 
     editable = (row['담당부서'] == role)
     if editable:
-        상태 = st.radio("📌 상태", ["진행중", "완료"], horizontal=True)
+        상태 = st.radio("📌 상태", ["진행중", "완료"], index=0 if row['상태'] == '진행중' else 1, horizontal=True)
         key = (cost_type, row['단계번호'])
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
             금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000)
             if st.button("저장 및 완료"):
-                update_step_force(site, year, month, cost_type, row['단계번호'], 상태, field, 금액)
-                st.success("✅ 저장 완료. 다음 단계로 이동합니다.")
+                update_step(site, year, month, cost_type, row['단계번호'], 상태, field, 금액)
                 st.rerun()
         else:
             if st.button("단계 완료 저장"):
-                update_step_force(site, year, month, cost_type, row['단계번호'], 상태)
-                st.success("✅ 저장 완료. 다음 단계로 이동합니다.")
+                update_step(site, year, month, cost_type, row['단계번호'], 상태)
                 st.rerun()
     else:
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
+
+if st.checkbox("📊 결과 리포트 보기"):
+    with sqlite3.connect(DB_PATH) as conn:
+        df_all = pd.read_sql("SELECT * FROM 절차상태", conn)
+    df_all['월'] = df_all['연도'] + '-' + df_all['월']
+    df_summary = df_all.groupby(['현장명', '월']).agg({
+        '기성금': 'sum', '노무비': 'sum', '투입비': 'sum'
+    }).reset_index()
+    df_summary['손수익'] = df_summary['기성금'] - df_summary['투입비']
+    df_summary['노무비비중'] = df_summary['노무비'] / df_summary['투입비'].replace(0, 1)
+    st.dataframe(df_summary)
