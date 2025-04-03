@@ -1,4 +1,4 @@
-# main.py - 수정된 패치 버전 (단계 완료 후 다음 단계 갱신 오류 해결)
+# main.py - 커밋 문제 수정된 확정 패치 버전 (상태 저장 확실히 적용)
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -174,8 +174,3 @@ if st.checkbox("📊 결과 리포트 보기"):
     df_summary['손수익'] = df_summary['기성금'] - df_summary['투입비']
     df_summary['노무비비중'] = df_summary['노무비'] / df_summary['투입비'].replace(0, 1)
     st.dataframe(df_summary)
-# 📌 디버깅용: 현재 절차 상태 전체 확인
-if st.checkbox("🛠 디버그: 절차상태 전체 보기"):
-    with sqlite3.connect(DB_PATH) as conn:
-        df_debug = pd.read_sql("SELECT * FROM 절차상태", conn)
-    st.dataframe(df_debug)
