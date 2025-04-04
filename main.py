@@ -155,21 +155,23 @@ if progressing.empty:
 else:
     current = progressing.sort_values('단계번호').iloc[0]
     st.subheader(f"📍 현재 단계: {current['단계번호']} - {current['작업내용']}")
-    st.markdown(f"**담당 부서:** `{current['담당부서']}`  |  **상태:** `{current['상태']}`")
+    st.markdown(f"**담당 부서:** `{current['담당부서']}`")
 
     editable = (current['담당부서'] == role)
     if editable:
+        상태 = st.radio("📌 진행 상태", ["진행중", "완료"], index=0 if current['상태'] == '진행중' else 1, horizontal=True)
         key = (cost_type, current['단계번호'])
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
             금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000, key=field)
-            update_step(site, year, month, cost_type, current['단계번호'], '완료', field, 금액)
+            update_step(site, year, month, cost_type, current['단계번호'], 상태, field, 금액)
         else:
-            update_step(site, year, month, cost_type, current['단계번호'], '완료')
+            update_step(site, year, month, cost_type, current['단계번호'], 상태)
 
-        if current['상태'] == '완료' and st.button("➡️ 다음 단계로 이동"):
+        if 상태 == '완료' and st.button("➡️ 다음 단계로 이동"):
             st.rerun()
     else:
+        st.markdown(f"**상태:** `{current['상태']}`")
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
 
 if st.checkbox("📊 결과 리포트 보기"):
