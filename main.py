@@ -120,13 +120,6 @@ def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None
                     WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
                 """, (상태, site, year, month, cost_type, step_no))
             conn.commit()
-
-            if cursor.rowcount == 0:
-                st.warning("⚠️ 저장된 항목이 없습니다. 조건을 다시 확인해주세요.")
-            else:
-                st.success("✅ 저장 완료")
-                st.rerun()
-
     except Exception as e:
         st.error(f"❌ DB 저장 오류 발생: {e}")
 
@@ -169,11 +162,12 @@ else:
         key = (cost_type, current['단계번호'])
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
-            금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000)
+            금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000, key=field)
             update_step(site, year, month, cost_type, current['단계번호'], '완료', field, 금액)
         else:
             update_step(site, year, month, cost_type, current['단계번호'], '완료')
-        if st.button("➡️ 다음 단계로 이동"):
+
+        if current['상태'] == '완료' and st.button("➡️ 다음 단계로 이동"):
             st.rerun()
     else:
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
