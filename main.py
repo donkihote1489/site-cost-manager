@@ -74,6 +74,7 @@ def init_db():
         ''')
 
 def initialize_procedure(site, year, month, cost_type):
+    month = f"{int(month):02d}"
     flow = get_procedure_flow().get(cost_type, [])
     if not flow:
         st.error(f"❌ '{cost_type}'에 대한 절차 흐름이 정의되어 있지 않습니다.")
@@ -92,6 +93,7 @@ def initialize_procedure(site, year, month, cost_type):
         conn.commit()
 
 def load_steps(site, year, month, cost_type):
+    month = f"{int(month):02d}"
     with sqlite3.connect(DB_PATH) as conn:
         df = pd.read_sql("""
             SELECT * FROM 절차상태
@@ -101,6 +103,7 @@ def load_steps(site, year, month, cost_type):
     return df
 
 def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
+    month = f"{int(month):02d}"
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
@@ -133,7 +136,6 @@ COST_INPUT_CONDITIONS = {
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 5): "투입비"
 }
 
-# Streamlit UI
 st.set_page_config(page_title="현장비용 관리", layout="wide")
 st.title("🏗️ 전문건설 현장비용 관리 시스템")
 init_db()
