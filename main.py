@@ -13,10 +13,38 @@ USERS = {
 
 def get_procedure_flow():
     return {
-        "1. 계약(변경)체결": [...],  # 동일
-        "2. 기성금 청구 및 수금": [...],  # 동일
-        "3. 노무 및 협력업체 지급 및 투입비 입력": [...],  # 동일
-        "4. 선금(외 기타)보증": [...],  # 동일
+        "1. 계약(변경)체결": [
+            (1, '계약(변경)보고', '현장'),
+            (2, '계약(변경)확인', '본사 공무팀'),
+            (3, '계약 승인 요청 접수', '현장'),
+            (4, '계약 진행 요청', '본사 공무팀'),
+            (5, '보증 등 발행 협력사 등록', '경영지원부'),
+            (6, 'Kiscon사이트 등록', '본사 공무팀')
+        ],
+        "2. 기성금 청구 및 수금": [
+            (1, '기성 조서 작성', '현장'),
+            (2, '예상 기성 확인', '본사 공무팀'),
+            (3, '기성 확정', '현장'),
+            (4, '발행 요청 확인', '본사 공무팀'),
+            (5, '계산서 발행 협력사 등록', '경영지원부'),
+            (6, '기성금 수금', '경영지원부'),
+            (7, 'Kiscon 사이트 등록', '본사 공무팀')
+        ],
+        "3. 노무 및 협력업체 지급 및 투입비 입력": [
+            (1, '노무대장 작성', '현장'),
+            (2, '노무대장 확인', '본사 공무팀'),
+            (3, '노무비 신고', '경영지원부'),
+            (4, '보험료 확정', '경영지원부'),
+            (5, '하도급지킴이 등록 및 투입비 입력', '현장'),
+            (6, '하도급지킴이 확인', '본사 공무팀'),
+            (7, '지급 확인', '경영지원부')
+        ],
+        "4. 선금(외 기타)보증": [
+            (1, '선금 공문 접수', '현장'),
+            (2, '공문 보고', '본사 공무팀'),
+            (3, '보증 발행 등록', '경영지원부'),
+            (4, 'Kiscon 등록', '본사 공무팀')
+        ]
     }
 
 def login_view():
@@ -46,9 +74,16 @@ def init_db():
         ''')
 
 def initialize_procedure(site, year, month, cost_type):
-    flow = get_procedure_flow()[cost_type]
+    flow = get_procedure_flow().get(cost_type, [])
+    if not flow:
+        st.error(f"❌ '{cost_type}'에 대한 절차 흐름이 정의되어 있지 않습니다.")
+        return
     with sqlite3.connect(DB_PATH) as conn:
-        for step_no, task, dept in flow:
+        for step in flow:
+            if len(step) != 3:
+                st.error(f"❌ 단계 정의 오류: {step}")
+                continue
+            step_no, task, dept = step
             conn.execute("""
                 INSERT OR IGNORE INTO 절차상태
                 (현장명, 연도, 월, 비용유형, 단계번호, 작업내용, 담당부서)
@@ -88,6 +123,7 @@ def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None
             else:
                 st.success("✅ 단계가 성공적으로 저장되었습니다.")
                 st.rerun()
+
     except Exception as e:
         st.error(f"❌ DB 저장 오류 발생: {e}")
 
@@ -97,6 +133,7 @@ COST_INPUT_CONDITIONS = {
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 5): "투입비"
 }
 
+# Streamlit UI
 st.set_page_config(page_title="현장비용 관리", layout="wide")
 st.title("🏗️ 전문건설 현장비용 관리 시스템")
 init_db()
