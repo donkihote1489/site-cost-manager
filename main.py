@@ -149,29 +149,33 @@ cost_type = st.sidebar.selectbox("비용유형 선택", list(get_procedure_flow(
 initialize_procedure(site, year, month, cost_type)
 df_steps = load_steps(site, year, month, cost_type)
 
-progressing = df_steps[df_steps['상태'] != '완료']
-if progressing.empty:
+# 현재 단계 계산 방식 개선: 상태가 '진행중'인 것 중 첫 번째를 보여줌
+current = df_steps[df_steps['상태'] != '완료'].sort_values('단계번호').head(1)
+
+if current.empty:
     st.success("✅ 모든 절차가 완료되었습니다!")
 else:
-    current = progressing.sort_values('단계번호').iloc[0]
-    st.subheader(f"📍 현재 단계: {current['단계번호']} - {current['작업내용']}")
-    st.markdown(f"**담당 부서:** `{current['담당부서']}`")
+    row = current.iloc[0]
+    st.subheader(f"📍 현재 단계: {row['단계번호']} - {row['작업내용']}")
+    st.markdown(f"**담당 부서:** `{row['담당부서']}`")
 
-    editable = (current['담당부서'] == role)
+    editable = (row['담당부서'] == role)
     if editable:
-        상태 = st.radio("📌 진행 상태", ["진행중", "완료"], index=0 if current['상태'] == '진행중' else 1, horizontal=True)
-        key = (cost_type, current['단계번호'])
+        상태 = st.radio("📌 진행 상태", ["진행중", "완료"], index=0 if row['상태'] == '진행중' else 1, horizontal=True)
+        key = (cost_type, row['단계번호'])
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
             금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000, key=field)
-            update_step(site, year, month, cost_type, current['단계번호'], 상태, field, 금액)
+            update_step(site, year, month, cost_type, row['단계번호'], 상태, field, 금액)
         else:
-            update_step(site, year, month, cost_type, current['단계번호'], 상태)
+            update_step(site, year, month, cost_type, row['단계번호'], 상태)
 
-        if 상태 == '완료' and st.button("➡️ 다음 단계로 이동"):
-            st.rerun()
+        if 상태 == '완료':
+            if st.button("➡️ 다음 단계로 이동"):
+                # 현재 단계를 완료 처리했으므로 다음 단계 표시를 위해 새로고침
+                st.rerun()
     else:
-        st.markdown(f"**상태:** `{current['상태']}`")
+        st.markdown(f"**상태:** `{row['상태']}`")
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
 
 if st.checkbox("📊 결과 리포트 보기"):
