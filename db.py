@@ -1,3 +1,7 @@
+# 1단계: db.py 재작성 - 월과 연도 필터 일관화, 월은 항상 2자리 문자열로 처리
+from pathlib import Path
+
+fixed_db_code = """
 import sqlite3
 from contextlib import contextmanager
 import streamlit as st
@@ -39,6 +43,7 @@ def init_db():
             st.error(f"❌ 테이블 생성 오류: {e}")
 
 def insert_initial_steps(site, year, month, cost_type, step_list):
+    month = f"{int(month):02d}"
     with get_connection() as conn:
         try:
             for step_no, task, dept in step_list:
@@ -52,6 +57,7 @@ def insert_initial_steps(site, year, month, cost_type, step_list):
             st.error(f"❌ 초기 절차 삽입 오류: {e}")
 
 def load_procedure_steps(site, year, month, cost_type):
+    month = f"{int(month):02d}"
     with get_connection() as conn:
         try:
             cursor = conn.cursor()
@@ -66,6 +72,7 @@ def load_procedure_steps(site, year, month, cost_type):
             return []
 
 def update_step_status(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
+    month = f"{int(month):02d}"
     with get_connection() as conn:
         try:
             if 금액컬럼:
@@ -85,22 +92,23 @@ def update_step_status(site, year, month, cost_type, step_no, 상태, 금액컬�
             st.error(f"❌ 상태 업데이트 오류: {e}")
 
 def activate_next_step(site, year, month, cost_type, current_step_no):
+    month = f"{int(month):02d}"
     with get_connection() as conn:
         try:
             conn.execute('''
                 UPDATE 절차상태
                 SET 상태='완료'
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=? AND 상태 != '완료'
             ''', (site, year, month, cost_type, current_step_no))
 
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT 상태 FROM 절차상태
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                SELECT 1 FROM 절차상태
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=? AND 상태 != '완료'
             ''', (site, year, month, cost_type, current_step_no + 1))
-            next_step = cursor.fetchone()
+            next_exists = cursor.fetchone()
 
-            if next_step and next_step[0] != '완료':
+            if next_exists:
                 conn.execute('''
                     UPDATE 절차상태
                     SET 상태='진행중'
@@ -110,18 +118,9 @@ def activate_next_step(site, year, month, cost_type, current_step_no):
             conn.commit()
         except Exception as e:
             st.error(f"❌ 다음 단계 이동 오류: {e}")
+"""
 
-def fetch_summary_data():
-    with get_connection() as conn:
-        try:
-            return conn.execute('''
-                SELECT 현장명, 연도 || '-' || 월 AS 월, 
-                       SUM(기성금) AS 기성금,
-                       SUM(노무비) AS 노무비,
-                       SUM(투입비) AS 투입비
-                FROM 절차상태
-                GROUP BY 현장명, 연도, 월
-            ''').fetchall()
-        except Exception as e:
-            st.error(f"❌ 요약 데이터 조회 오류: {e}")
-            return []
+# 저장
+path = Path("/mnt/data/db_fixed.py")
+path.write_text(fixed_db_code.strip(), encoding="utf-8")
+path
