@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime
 from auth import login_view, check_login
 from db import init_db
-from procedure import procedure_flow_view
+from procedure import procedure_flow_view, get_procedure_flow
 from dashboard import summary_dashboard
 
 st.set_page_config(page_title="현장비용 관리 시스템", layout="wide")
@@ -31,17 +31,14 @@ def validate_inputs():
     if site not in sites:
         st.sidebar.error("❌ 현장을 선택하세요")
         return False
-    if cost_type not in ["2. 기성금 청구 및 수금", "3. 노무 및 협력업체 지급 및 투입비 입력"]:
+    if cost_type not in get_procedure_flow().keys():
         st.sidebar.error("❌ 유효한 비용 유형이 아닙니다")
         return False
     return True
 
 year = st.sidebar.text_input("연도", value=str(this_year))
 month = st.sidebar.selectbox("월", [f"{i:02d}" for i in range(1, 13)])
-cost_type = st.sidebar.selectbox("비용유형", [
-    "2. 기성금 청구 및 수금",
-    "3. 노무 및 협력업체 지급 및 투입비 입력"
-])
+cost_type = st.sidebar.selectbox("비용유형", list(get_procedure_flow().keys()))
 
 if validate_inputs():
     procedure_flow_view(site, year, month, cost_type)
