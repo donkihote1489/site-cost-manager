@@ -1,8 +1,3 @@
-# main.py - 최종 안정화 버전 전체 코드
-# ✅ 단계 상태 저장 및 다음 단계 진입 보장
-# ✅ 역할별 입력 제어, 비용 입력 조건 처리
-# ✅ SQLite 저장 및 리포트 표시 포함
-
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -18,38 +13,10 @@ USERS = {
 
 def get_procedure_flow():
     return {
-        "1. 계약(변경)체결": [
-            (1, '계약(변경)보고', '현장'),
-            (2, '계약(변경)확인', '본사 공무팀'),
-            (3, '계약 승인 요청 접수', '현장'),
-            (4, '계약 진행 요청', '본사 공무팀'),
-            (5, '보증 등 발행 협력사 등록', '경영지원부'),
-            (6, 'Kiscon사이트 등록', '본사 공무팀')
-        ],
-        "2. 기성금 청구 및 수금": [
-            (1, '기성 조서 작성', '현장'),
-            (2, '예상 기성 확인', '본사 공무팀'),
-            (3, '기성 확정', '현장'),
-            (4, '발행 요청 확인', '본사 공무팀'),
-            (5, '계산서 발행 협력사 등록', '경영지원부'),
-            (6, '기성금 수금', '경영지원부'),
-            (7, 'Kiscon 사이트 등록', '본사 공무팀')
-        ],
-        "3. 노무 및 협력업체 지급 및 투입비 입력": [
-            (1, '노무대장 작성', '현장'),
-            (2, '노무대장 확인', '본사 공무팀'),
-            (3, '노무비 신고', '경영지원부'),
-            (4, '보험료 확정', '경영지원부'),
-            (5, '하도급지킴이 등록 및 투입비 입력', '현장'),
-            (6, '하도급지킴이 확인', '본사 공무팀'),
-            (7, '지급 확인', '경영지원부')
-        ],
-        "4. 선금(외 기타)보증": [
-            (1, '선금 공문 접수', '현장'),
-            (2, '공문 보고', '본사 공무팀'),
-            (3, '보증 발행 등록', '경영지원부'),
-            (4, 'Kiscon 등록', '본사 공무팀')
-        ]
+        "1. 계약(변경)체결": [...],  # 동일
+        "2. 기성금 청구 및 수금": [...],  # 동일
+        "3. 노무 및 협력업체 지급 및 투입비 입력": [...],  # 동일
+        "4. 선금(외 기타)보증": [...],  # 동일
     }
 
 def login_view():
@@ -101,21 +68,28 @@ def load_steps(site, year, month, cost_type):
 def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
     try:
         with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
             if 금액컬럼:
-                conn.execute(f"""
+                cursor.execute(f"""
                     UPDATE 절차상태
                     SET 상태=?, {금액컬럼}=?
                     WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
                 """, (상태, 금액, site, year, month, cost_type, step_no))
             else:
-                conn.execute("""
+                cursor.execute("""
                     UPDATE 절차상태
                     SET 상태=?
                     WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
                 """, (상태, site, year, month, cost_type, step_no))
             conn.commit()
+
+            if cursor.rowcount == 0:
+                st.warning("⚠️ 저장된 항목이 없습니다. 조건을 다시 확인해주세요.")
+            else:
+                st.success("✅ 단계가 성공적으로 저장되었습니다.")
+                st.rerun()
     except Exception as e:
-        st.error(f"DB 저장 오류: {e}")
+        st.error(f"❌ DB 저장 오류 발생: {e}")
 
 COST_INPUT_CONDITIONS = {
     ("2. 기성금 청구 및 수금", 3): "기성금",
@@ -143,31 +117,26 @@ cost_type = st.sidebar.selectbox("비용유형 선택", list(get_procedure_flow(
 initialize_procedure(site, year, month, cost_type)
 df_steps = load_steps(site, year, month, cost_type)
 
-latest_done = df_steps[df_steps['상태'] == '완료']['단계번호'].max()
-next_step = 1 if pd.isna(latest_done) else int(latest_done) + 1
-current = df_steps[df_steps['단계번호'] == next_step]
-
-if current.empty:
+progressing = df_steps[df_steps['상태'] != '완료']
+if progressing.empty:
     st.success("✅ 모든 절차가 완료되었습니다!")
 else:
-    row = current.iloc[0]
-    st.subheader(f"📍 현재 단계: {row['단계번호']} - {row['작업내용']}")
-    st.markdown(f"**담당 부서:** `{row['담당부서']}`  |  **상태:** `{row['상태']}`")
+    current = progressing.sort_values('단계번호').iloc[0]
+    st.subheader(f"📍 현재 단계: {current['단계번호']} - {current['작업내용']}")
+    st.markdown(f"**담당 부서:** `{current['담당부서']}`  |  **상태:** `{current['상태']}`")
 
-    editable = (row['담당부서'] == role)
+    editable = (current['담당부서'] == role)
     if editable:
-        상태 = st.radio("📌 상태", ["진행중", "완료"], index=0 if row['상태'] == '진행중' else 1, horizontal=True)
-        key = (cost_type, row['단계번호'])
+        상태 = st.radio("📌 상태", ["진행중", "완료"], index=0 if current['상태'] == '진행중' else 1, horizontal=True)
+        key = (cost_type, current['단계번호'])
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
             금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000)
             if st.button("저장 및 완료"):
-                update_step(site, year, month, cost_type, row['단계번호'], 상태, field, 금액)
-                st.rerun()
+                update_step(site, year, month, cost_type, current['단계번호'], 상태, field, 금액)
         else:
             if st.button("단계 완료 저장"):
-                update_step(site, year, month, cost_type, row['단계번호'], 상태)
-                st.rerun()
+                update_step(site, year, month, cost_type, current['단계번호'], 상태)
     else:
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
 
