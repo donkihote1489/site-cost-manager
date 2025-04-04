@@ -1,5 +1,0 @@
-txt
-
-streamlit
-pandas
-matplotlib
