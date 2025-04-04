@@ -123,6 +123,20 @@ def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None
     except Exception as e:
         st.error(f"❌ DB 저장 오류 발생: {e}")
 
+def move_to_next_step(site, year, month, cost_type, current_step_no):
+    month = f"{int(month):02d}"
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE 절차상태
+                SET 상태='진행중'
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=? AND 상태!='완료'
+            """, (site, year, month, cost_type, current_step_no + 1))
+            conn.commit()
+    except Exception as e:
+        st.error(f"❌ 다음 단계 이동 오류: {e}")
+
 COST_INPUT_CONDITIONS = {
     ("2. 기성금 청구 및 수금", 3): "기성금",
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 3): "노무비",
@@ -149,7 +163,6 @@ cost_type = st.sidebar.selectbox("비용유형 선택", list(get_procedure_flow(
 initialize_procedure(site, year, month, cost_type)
 df_steps = load_steps(site, year, month, cost_type)
 
-# 현재 단계 계산 방식 개선: 상태가 '진행중'인 것 중 첫 번째를 보여줌
 current = df_steps[df_steps['상태'] != '완료'].sort_values('단계번호').head(1)
 
 if current.empty:
@@ -172,7 +185,7 @@ else:
 
         if 상태 == '완료':
             if st.button("➡️ 다음 단계로 이동"):
-                # 현재 단계를 완료 처리했으므로 다음 단계 표시를 위해 새로고침
+                move_to_next_step(site, year, month, cost_type, row['단계번호'])
                 st.rerun()
     else:
         st.markdown(f"**상태:** `{row['상태']}`")
