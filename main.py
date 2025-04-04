@@ -124,7 +124,7 @@ def update_step(site, year, month, cost_type, step_no, 상태, 금액컬럼=None
             if cursor.rowcount == 0:
                 st.warning("⚠️ 저장된 항목이 없습니다. 조건을 다시 확인해주세요.")
             else:
-                st.success("✅ 단계가 성공적으로 저장되었습니다.")
+                st.success("✅ 저장 완료")
                 st.rerun()
 
     except Exception as e:
@@ -166,16 +166,15 @@ else:
 
     editable = (current['담당부서'] == role)
     if editable:
-        상태 = st.radio("📌 상태", ["진행중", "완료"], index=0 if current['상태'] == '진행중' else 1, horizontal=True)
         key = (cost_type, current['단계번호'])
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
             금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000)
-            if st.button("저장 및 완료"):
-                update_step(site, year, month, cost_type, current['단계번호'], 상태, field, 금액)
+            update_step(site, year, month, cost_type, current['단계번호'], '완료', field, 금액)
         else:
-            if st.button("단계 완료 저장"):
-                update_step(site, year, month, cost_type, current['단계번호'], 상태)
+            update_step(site, year, month, cost_type, current['단계번호'], '완료')
+        if st.button("➡️ 다음 단계로 이동"):
+            st.rerun()
     else:
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
 
