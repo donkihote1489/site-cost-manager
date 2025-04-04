@@ -68,6 +68,7 @@ def procedure_flow_view(site, year, month, cost_type):
     st.markdown(f"**담당 부서:** `{row['담당부서']}`")
 
     if row["담당부서"] == st.session_state["role"]:
+        # 진행 상태 선택
         상태 = st.radio("📌 진행 상태", ["진행중", "완료"], index=0 if row["상태"] == "진행중" else 1, horizontal=True)
         key = (cost_type, row["단계번호"])
         저장됨 = False
@@ -78,13 +79,19 @@ def procedure_flow_view(site, year, month, cost_type):
             if st.button("💾 저장"):
                 update_step_status(site, year, month, cost_type, row["단계번호"], 상태, field, 금액)
                 저장됨 = True
+                st.success("✅ 저장 완료")
+                st.rerun()
         else:
             if st.button("💾 저장"):
                 update_step_status(site, year, month, cost_type, row["단계번호"], 상태)
                 저장됨 = True
+                st.success("✅ 저장 완료")
+                st.rerun()
 
-        if 상태 == "완료":
+        # 항상 다음 단계 이동 버튼 표시
+        if 상태 == "완료" or row["상태"] == "완료":
             if st.button("➡️ 다음 단계로 이동"):
+                # 다시 한 번 완료 처리 강제 반영 후 다음 단계 이동
                 update_step_status(site, year, month, cost_type, row["단계번호"], "완료")
                 activate_next_step(site, year, month, cost_type, row["단계번호"])
                 st.success("✅ 다음 단계로 이동 완료")
