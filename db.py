@@ -122,5 +122,4 @@ def activate_next_step(site, year, month, cost_type, current_step_no):
 
 # 저장
 path = Path("/mnt/data/db_fixed.py")
-path.write_text(fixed_db_code.strip(), encoding="utf-8")
 path
