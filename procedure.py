@@ -1,3 +1,7 @@
+# 2단계: procedure.py 완전 재작성 – 월/연도 상태 공유 방지 + 다음 단계 정확 이동
+from pathlib import Path
+
+fixed_procedure_code = """
 import streamlit as st
 import pandas as pd
 from db import insert_initial_steps, load_procedure_steps, update_step_status, activate_next_step
@@ -45,22 +49,26 @@ def get_procedure_flow():
     }
 
 def procedure_flow_view(site, year, month, cost_type):
+    month = f"{int(month):02d}"  # 월 통일
     step_list = get_procedure_flow().get(cost_type, [])
     if not step_list:
-        st.error("❌ 비용 유형에 대한 절차 흐름이 정의되지 않았습니다.")
+        st.error("❌ 해당 비용유형에 대한 절차 흐름이 정의되어 있지 않습니다.")
         return
 
     insert_initial_steps(site, year, month, cost_type, step_list)
     rows = load_procedure_steps(site, year, month, cost_type)
     if not rows:
-        st.warning("⚠️ 절차 단계가 없습니다.")
+        st.warning("📭 절차 단계가 없습니다.")
         return
 
-    df = pd.DataFrame(rows, columns=["현장명", "연도", "월", "비용유형", "단계번호", "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"])
+    df = pd.DataFrame(rows, columns=[
+        "현장명", "연도", "월", "비용유형", "단계번호",
+        "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"
+    ])
     df_active = df[df["상태"] != "완료"].sort_values("단계번호")
 
     if df_active.empty:
-        st.success("✅ 모든 절차가 완료되었습니다!")
+        st.success("🎉 모든 절차가 완료되었습니다.")
         return
 
     row = df_active.iloc[0]
@@ -68,33 +76,39 @@ def procedure_flow_view(site, year, month, cost_type):
     st.markdown(f"**담당 부서:** `{row['담당부서']}`")
 
     if row["담당부서"] == st.session_state["role"]:
-        # 진행 상태 선택
-        상태 = st.radio("📌 진행 상태", ["진행중", "완료"], index=0 if row["상태"] == "진행중" else 1, horizontal=True)
+        상태 = st.radio("📌 진행 상태", ["진행중", "완료"],
+                        index=0 if row["상태"] == "진행중" else 1,
+                        horizontal=True)
+
         key = (cost_type, row["단계번호"])
-        저장됨 = False
 
         if key in COST_INPUT_CONDITIONS:
             field = COST_INPUT_CONDITIONS[key]
             금액 = st.number_input(f"💰 {field} 입력", min_value=0, step=100000, key=f"{field}_{row['단계번호']}")
-            if st.button("💾 저장"):
-                update_step_status(site, year, month, cost_type, row["단계번호"], 상태, field, 금액)
-                저장됨 = True
-                st.success("✅ 저장 완료")
-                st.rerun()
         else:
-            if st.button("💾 저장"):
-                update_step_status(site, year, month, cost_type, row["단계번호"], 상태)
-                저장됨 = True
-                st.success("✅ 저장 완료")
-                st.rerun()
+            금액 = None
+            field = None
 
-        # 항상 다음 단계 이동 버튼 표시
-        if 상태 == "완료" or row["상태"] == "완료":
+        if st.button("💾 저장"):
+            update_step_status(
+                site, year, month, cost_type,
+                row["단계번호"], 상태,
+                금액컬럼=field if 금액 is not None else None,
+                금액=금액 if 금액 is not None else None
+            )
+            st.success("✅ 상태가 저장되었습니다.")
+            st.rerun()
+
+        if row["상태"] == "완료":
             if st.button("➡️ 다음 단계로 이동"):
-                # 다시 한 번 완료 처리 강제 반영 후 다음 단계 이동
                 update_step_status(site, year, month, cost_type, row["단계번호"], "완료")
                 activate_next_step(site, year, month, cost_type, row["단계번호"])
-                st.success("✅ 다음 단계로 이동 완료")
                 st.rerun()
     else:
-        st.info("ℹ️ 이 단계는 귀하의 부서가 담당하지 않습니다.")
+        st.info("🔒 이 단계는 귀하의 부서가 담당하지 않습니다.")
+"""
+
+# 저장
+path = Path("/mnt/data/procedure_full_fix_final.py")
+path.write_text(fixed_procedure_code.strip(), encoding="utf-8")
+path
