@@ -114,3 +114,22 @@ def activate_next_step(site, year, month, cost_type, current_step_no):
             conn.commit()
         except Exception as e:
             st.error(f"❌ 다음 단계 이동 오류: {e}")
+
+# ✅ 추가된 요약 데이터 조회 함수
+def fetch_summary_data():
+    with get_connection() as conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT 현장명, 월,
+                       SUM(기성금) AS 기성금,
+                       SUM(노무비) AS 노무비,
+                       SUM(투입비) AS 투입비
+                FROM 절차상태
+                GROUP BY 현장명, 월
+                ORDER BY 현장명, 월
+            ''')
+            return cursor.fetchall()
+        except Exception as e:
+            st.error(f"❌ 요약 데이터 조회 오류: {e}")
+            return []
