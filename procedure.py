@@ -54,14 +54,14 @@ def procedure_flow_view(site, year, month, cost_type):
     flow = get_procedure_flow().get(cost_type, [])
 
     if not flow:
-        st.error("❌ 정의되지 않은 비용유형입니다.")
+        st.error("정의되지 않은 비용유형입니다.")
         return
 
     insert_initial_steps(site, year, month, cost_type, flow)
     steps = load_procedure_steps(site, year, month, cost_type)
 
     if not steps:
-        st.warning("📭 등록된 절차가 없습니다.")
+        st.warning("등록된 절차가 없습니다.")
         return
 
     df = pd.DataFrame(steps, columns=[
@@ -71,7 +71,7 @@ def procedure_flow_view(site, year, month, cost_type):
 
     df_pending = df[df["상태"] != "완료"].sort_values("단계번호")
     if df_pending.empty:
-        st.success("🎉 모든 절차가 완료되었습니다.")
+        st.success("모든 절차가 완료되었습니다.")
         return
 
     row = df_pending.iloc[0]
@@ -80,8 +80,8 @@ def procedure_flow_view(site, year, month, cost_type):
     상태 = row["상태"]
     작업내용 = row["작업내용"]
 
-    st.subheader(f"📍 현재 단계: {step_no} - {작업내용}")
-    st.markdown(f"**담당 부서:** `{담당부서}`")
+    st.subheader(f"현재 단계: {step_no} - {작업내용}")
+    st.markdown(f"담당 부서: **{담당부서}**")
 
     is_my_role = (담당부서 == st.session_state.get("role", ""))
 
@@ -92,7 +92,7 @@ def procedure_flow_view(site, year, month, cost_type):
 
         if 금액필드:
             금액입력 = st.number_input(
-                f"💰 {금액필드} 입력",
+                f"{금액필드} 입력",
                 min_value=0,
                 step=100000,
                 key=f"{금액필드}_{step_no}"
@@ -105,9 +105,8 @@ def procedure_flow_view(site, year, month, cost_type):
                     금액=금액입력
                 )
 
-        # 자동 저장용 라디오 버튼
         new_status = st.radio(
-            "📌 진행 상태 (자동저장)",
+            "진행 상태 (자동 저장)",
             ["진행중", "완료"],
             index=0 if 상태 == "진행중" else 1,
             horizontal=True,
@@ -121,16 +120,16 @@ def procedure_flow_view(site, year, month, cost_type):
             )
             st.experimental_rerun()
 
-        # 항상 표시되는 버튼 (단, 완료일 때만 작동)
-        if st.button(➡️ 다음 단계로 이동", key="next_btn"):
+        # 항상 보이는 버튼
+        if st.button("다음 단계로 이동", key="next_btn"):
             current_data = load_procedure_steps(site, year, month, cost_type)
             current_df = pd.DataFrame(current_data, columns=df.columns)
             current_row = current_df[current_df["단계번호"] == step_no].iloc[0]
             if current_row["상태"] == "완료":
                 activate_next_step(site, year, month, cost_type, step_no)
-                st.success("✅ 다음 단계로 이동하였습니다.")
+                st.success("다음 단계로 이동하였습니다.")
                 st.experimental_rerun()
             else:
-                st.warning("❗ 상태를 '완료'로 변경해야 이동할 수 있습니다.")
+                st.warning("현재 상태를 '완료'로 변경해야 다음 단계로 이동할 수 있습니다.")
     else:
-        st.info("🔒 이 단계는 귀하의 부서가 담당하지 않습니다.")
+        st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
