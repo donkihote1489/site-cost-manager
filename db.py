@@ -59,21 +59,27 @@ def load_procedure_steps(site, year, month, cost_type):
 
 def update_step_status(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
     month = f"{int(month):02d}"
-    st.write("💾 DB UPDATE:", site, year, month, cost_type, step_no, 상태, 금액컬럼, 금액)
     with get_connection() as conn:
-        if 금액컬럼:
-            conn.execute(f'''
-                UPDATE 절차상태
-                SET 상태=?, {금액컬럼}=?
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-            ''', (상태, 금액, site, year, month, cost_type, step_no))
-        else:
-            conn.execute('''
-                UPDATE 절차상태
-                SET 상태=?
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-            ''', (상태, site, year, month, cost_type, step_no))
-        conn.commit()
+        try:
+            # ✅ 디버그 로그
+            st.code(f"💾 상태 업데이트 시도: step {step_no} → {상태}, 금액: {금액컬럼} = {금액}")
+
+            if 금액컬럼:
+                conn.execute(f'''
+                    UPDATE 절차상태
+                    SET 상태=?, {금액컬럼}=?
+                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                ''', (상태, 금액, site, year, month, cost_type, step_no))
+            else:
+                conn.execute('''
+                    UPDATE 절차상태
+                    SET 상태=?
+                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+                ''', (상태, site, year, month, cost_type, step_no))
+            conn.commit()
+
+        except Exception as e:
+            st.error(f"❌ 상태 업데이트 중 오류 발생: {e}")
 
 def activate_next_step(site, year, month, cost_type, current_step_no):
     month = f"{int(month):02d}"
