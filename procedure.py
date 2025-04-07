@@ -7,14 +7,12 @@ from db import (
     activate_next_step
 )
 
-# 금액 입력 조건 매핑: (비용유형, 단계번호): 금액컬럼
 COST_INPUT_CONDITIONS = {
     ("2. 기성금 청구 및 수금", 3): "기성금",
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 3): "노무비",
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 5): "투입비"
 }
 
-# 전체 절차 정의
 def get_procedure_flow():
     return {
         "1. 계약(변경)체결": [
@@ -51,7 +49,6 @@ def get_procedure_flow():
         ]
     }
 
-# 절차 플로우 UI 로직
 def procedure_flow_view(site, year, month, cost_type):
     month = f"{int(month):02d}"
     flow = get_procedure_flow().get(cost_type, [])
@@ -60,29 +57,23 @@ def procedure_flow_view(site, year, month, cost_type):
         st.error("❌ 정의되지 않은 비용유형입니다.")
         return
 
-    # 초기 절차 생성 (중복 삽입 방지)
     insert_initial_steps(site, year, month, cost_type, flow)
-
-    # 데이터 다시 로딩
     steps = load_procedure_steps(site, year, month, cost_type)
 
     if not steps:
         st.warning("📭 등록된 절차가 없습니다.")
         return
 
-    # DataFrame 구성
     df = pd.DataFrame(steps, columns=[
         "현장명", "연도", "월", "비용유형", "단계번호",
         "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"
     ])
 
-    # 완료되지 않은 절차 중 가장 앞 단계
     df_pending = df[df["상태"] != "완료"].sort_values("단계번호")
     if df_pending.empty:
         st.success("🎉 모든 절차가 완료되었습니다.")
         return
 
-    # 현재 진행 중인 단계 로딩
     row = df_pending.iloc[0]
     step_no = row["단계번호"]
     담당부서 = row["담당부서"]
@@ -95,17 +86,14 @@ def procedure_flow_view(site, year, month, cost_type):
     is_my_role = (담당부서 == st.session_state.get("role", ""))
 
     if is_my_role:
-        # 진행 상태 선택
         new_status = st.radio("📌 진행 상태", ["진행중", "완료"], index=0 if 상태 == "진행중" else 1, horizontal=True)
 
-        # 금액 입력 조건 확인
         key = (cost_type, step_no)
         금액필드 = COST_INPUT_CONDITIONS.get(key)
         금액입력 = None
         if 금액필드:
             금액입력 = st.number_input(f"💰 {금액필드} 입력", min_value=0, step=100000, key=f"{금액필드}_{step_no}")
 
-        # 저장 버튼
         if st.button("💾 저장", key="save_btn"):
             update_step_status(
                 site, year, month, cost_type, step_no,
@@ -113,24 +101,22 @@ def procedure_flow_view(site, year, month, cost_type):
                 금액컬럼=금액필드 if 금액입력 is not None else None,
                 금액=금액입력 if 금액입력 is not None else None
             )
-            st.success("✅ 저장되었습니다.")
-            st.rerun()
+            # 저장한 상태를 기억
+            st.session_state["saved_status"] = new_status
+            st.session_state["saved_step_no"] = step_no
+            st.experimental_rerun()
 
-        # 저장 후 상태가 DB에 반영되었는지 다시 로드해서 판단해야 하므로
-        # 아래 버튼은 조건에 따라 다시 나타나야 함
+        # rerun 이후 상태 확인
+        saved_status = st.session_state.get("saved_status", 상태)
+        saved_step_no = st.session_state.get("saved_step_no", step_no)
 
-        # 데이터 최신화
-        steps_updated = load_procedure_steps(site, year, month, cost_type)
-        df_updated = pd.DataFrame(steps_updated, columns=df.columns)
-        updated_row = df_updated[df_updated["단계번호"] == step_no].iloc[0]
-        updated_status = updated_row["상태"]
-
-        if updated_status == "완료":
+        if saved_status == "완료" and saved_step_no == step_no:
             if st.button("➡️ 다음 단계로 이동", key="next_btn"):
                 activate_next_step(site, year, month, cost_type, step_no)
                 st.success("✅ 다음 단계로 이동하였습니다.")
-                st.rerun()
+                del st.session_state["saved_status"]
+                del st.session_state["saved_step_no"]
+                st.experimental_rerun()
 
     else:
         st.info("🔒 이 단계는 귀하의 부서가 담당하지 않습니다.")
-
