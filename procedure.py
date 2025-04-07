@@ -111,21 +111,19 @@ def handle_auto_save(site, year, month, cost_type, step_row):
             update_step_status(site, year, month, cost_type, step_no, 상태, 금액필드, 금액입력)
             st.success(f"{금액필드} 자동 저장 완료")
 
-    if is_my_department(담당부서):
-        new_status = st.radio(
-            "진행 상태 (자동 저장)",
+    new_status = st.radio(
+        "진행 상태 (자동 저장)",
         ["진행중", "완료"],
         index=0 if 상태 == "진행중" else 1,
         horizontal=True,
         key=f"status_radio_{step_no}"
-        )
+    )
 
-        if new_status != 상태:
-            update_step_status(site, year, month, cost_type, step_no, new_status)
-            st.success("진행 상태 자동 저장 완료")
-            st.rerun()
+    if new_status != 상태:
+        update_step_status(site, year, month, cost_type, step_no, new_status)
+        st.success("진행 상태 자동 저장 완료")
+        st.rerun()
 
-    
 # -------------------------------
 # 4차: 단계 전환 제어
 # -------------------------------
