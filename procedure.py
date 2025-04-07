@@ -164,6 +164,8 @@ def procedure_flow_view(site, year, month, cost_type):
 
     if is_my_department(담당부서):
         handle_auto_save(site, year, month, cost_type, current)
-        render_next_step_button(site, year, month, cost_type, step_no)
     else:
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
+
+    # 권한과 관계없이 항상 다음 단계 전환 버튼은 표시
+    render_next_step_button(site, year, month, cost_type, step_no)
