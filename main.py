@@ -26,7 +26,7 @@ def is_valid_year(input_text):
 
 def validate_inputs():
     if not is_valid_year(year):
-        st.sidebar.error("❌ 올바른 연도를 입력하세요")
+        st.sidebar.error("❌ 올바른 연도를 입력하세요 (예: 2024)")
         return False
     if site not in sites:
         st.sidebar.error("❌ 현장을 선택하세요")
