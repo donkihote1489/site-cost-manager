@@ -86,37 +86,38 @@ def procedure_flow_view(site, year, month, cost_type):
     is_my_role = (담당부서 == st.session_state.get("role", ""))
 
     if is_my_role:
-        new_status = st.radio("📌 진행 상태", ["진행중", "완료"], index=0 if 상태 == "진행중" else 1, horizontal=True)
-
         key = (cost_type, step_no)
         금액필드 = COST_INPUT_CONDITIONS.get(key)
         금액입력 = None
+
         if 금액필드:
             금액입력 = st.number_input(f"💰 {금액필드} 입력", min_value=0, step=100000, key=f"{금액필드}_{step_no}")
+            if 금액입력 is not None:
+                update_step_status(site, year, month, cost_type, step_no, 상태=상태,
+                                   금액컬럼=금액필드, 금액=금액입력)
 
-        if st.button("💾 저장", key="save_btn"):
-            update_step_status(
-                site, year, month, cost_type, step_no,
-                상태=new_status,
-                금액컬럼=금액필드 if 금액입력 is not None else None,
-                금액=금액입력 if 금액입력 is not None else None
-            )
-            # 저장한 상태를 기억
-            st.session_state["saved_status"] = new_status
-            st.session_state["saved_step_no"] = step_no
+        # 자동 저장용 라디오 버튼
+        new_status = st.radio("📌 진행 상태 (자동저장)", ["진행중", "완료"],
+                              index=0 if 상태 == "진행중" else 1,
+                              horizontal=True,
+                              key=f"status_radio_{step_no}")
+
+        # 변경되었을 경우 즉시 저장
+        if new_status != 상태:
+            update_step_status(site, year, month, cost_type, step_no, 상태=new_status)
             st.experimental_rerun()
 
-        # rerun 이후 상태 확인
-        saved_status = st.session_state.get("saved_status", 상태)
-        saved_step_no = st.session_state.get("saved_step_no", step_no)
-
-        if saved_status == "완료" and saved_step_no == step_no:
-            if st.button("➡️ 다음 단계로 이동", key="next_btn"):
+        # 다음 단계로 이동 버튼은 항상 표시
+        if st.button(➡️ 다음 단계로 이동", key="next_btn"):
+            current_data = load_procedure_steps(site, year, month, cost_type)
+            current_df = pd.DataFrame(current_data, columns=df.columns)
+            current_row = current_df[current_df["단계번호"] == step_no].iloc[0]
+            if current_row["상태"] == "완료":
                 activate_next_step(site, year, month, cost_type, step_no)
                 st.success("✅ 다음 단계로 이동하였습니다.")
-                del st.session_state["saved_status"]
-                del st.session_state["saved_step_no"]
                 st.experimental_rerun()
+            else:
+                st.warning("❗ 진행 상태를 '완료'로 변경해야 다음 단계로 이동할 수 있습니다.")
 
     else:
         st.info("🔒 이 단계는 귀하의 부서가 담당하지 않습니다.")
