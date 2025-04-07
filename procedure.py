@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 from db import (
@@ -15,22 +16,59 @@ COST_INPUT_CONDITIONS = {
 
 def get_procedure_flow():
     return {
-        "1. 계약(변경)체결": [],
-        "2. 기성금 청구 및 수금": [],
-        "3. 노무 및 협력업체 지급 및 투입비 입력": [],
-        "4. 선금(외 기타)보증": []
+        "1. 계약(변경)체결": [
+            (1, "계약(변경)보고", "현장"),
+            (2, "계약(변경)확인", "본사 공무팀"),
+            (3, "계약 승인 요청 접수", "현장"),
+            (4, "계약 진행 요청", "본사 공무팀"),
+            (5, "보증 등 발행 협력사 등록", "경영지원부"),
+            (6, "Kiscon사이트 등록", "본사 공무팀")
+        ],
+        "2. 기성금 청구 및 수금": [
+            (1, "기성 조서 작성", "현장"),
+            (2, "예상 기성 확인", "본사 공무팀"),
+            (3, "기성 확정", "현장"),
+            (4, "발행 요청 확인", "본사 공무팀"),
+            (5, "계산서 발행 협력사 등록", "경영지원부"),
+            (6, "기성금 수금", "경영지원부"),
+            (7, "Kiscon 사이트 등록", "본사 공무팀")
+        ],
+        "3. 노무 및 협력업체 지급 및 투입비 입력": [
+            (1, "노무대장 작성", "현장"),
+            (2, "노무대장 확인", "본사 공무팀"),
+            (3, "노무비 신고", "경영지원부"),
+            (4, "보험료 확정", "경영지원부"),
+            (5, "하도급지킴이 등록 및 투입비 입력", "현장"),
+            (6, "하도급지킴이 확인", "본사 공무팀"),
+            (7, "지급 확인", "경영지원부")
+        ],
+        "4. 선금(외 기타)보증": [
+            (1, "선금 공문 접수", "현장"),
+            (2, "공문 보고", "본사 공무팀"),
+            (3, "보증 발행 등록", "경영지원부"),
+            (4, "Kiscon 등록", "본사 공무팀")
+        ]
     }
 
 def initialize_procedure(site, year, month, cost_type):
-    month = f"{int(month):02d}"
-    insert_initial_steps(site, year, month, cost_type, get_procedure_flow()[cost_type])
-    rows = load_procedure_steps(site, year, month, cost_type)
-    if not rows:
+    try:
+        flow = get_procedure_flow().get(cost_type)
+        if not flow:
+            st.warning(f"[초기화 실패] '{cost_type}'에 대한 절차 흐름이 정의되지 않았습니다.")
+            return None
+        st.info(f"[초기화] '{cost_type}' - 단계 {len(flow)}개 등록 시도")
+        insert_initial_steps(site, year, month, cost_type, flow)
+        rows = load_procedure_steps(site, year, month, cost_type)
+        if not rows:
+            st.warning(f"[DB 조회 실패] 조건(site={site}, year={year}, month={month}, type={cost_type})로 불러온 절차 데이터가 없습니다.")
+            return None
+        return pd.DataFrame(rows, columns=[
+            "현장명", "연도", "월", "비용유형", "단계번호",
+            "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"
+        ])
+    except Exception as e:
+        st.error(f"[initialize_procedure 에러] {e}")
         return None
-    return pd.DataFrame(rows, columns=[
-        "현장명", "연도", "월", "비용유형", "단계번호",
-        "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"
-    ])
 
 def get_current_step(df):
     df_pending = df[df["상태"] != "완료"].sort_values("단계번호")
@@ -42,7 +80,6 @@ def is_my_department(부서):
 def procedure_flow_view(site, year, month, cost_type):
     df = initialize_procedure(site, year, month, cost_type)
     if df is None:
-        st.warning("해당 데이터가 없습니다.")
         return
 
     current = get_current_step(df)
