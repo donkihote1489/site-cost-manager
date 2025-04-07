@@ -136,8 +136,9 @@ def render_next_step_button(site, year, month, cost_type, step_no):
             "현장명", "연도", "월", "비용유형", "단계번호",
             "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"
         ])
-        current = df[df["단계번호"] == step_no].iloc[0]
-        if current["상태"] != "완료":
+        df = df[df["단계번호"] == step_no].reset_index(drop=True)
+        current = df.iloc[0]
+        if current["상태"].strip() != "완료":
             st.warning("현재 단계를 '완료'로 변경해야 다음 단계로 이동할 수 있습니다.")
             return
         activate_next_step(site, year, month, cost_type, step_no)
