@@ -99,37 +99,34 @@ def activate_next_step(site, year, month, cost_type, current_step_no):
 
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT 1 FROM 절차상태
-                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=? AND 상태 != '완료'
-            ''', (site, year, month, cost_type, current_step_no + 1))
-            next_exists = cursor.fetchone()
+                SELECT 단계번호 FROM 절차상태
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 상태 != '완료'
+                ORDER BY 단계번호 ASC LIMIT 1
+            ''', (site, year, month, cost_type))
+            row = cursor.fetchone()
 
-            if next_exists:
+            if row:
                 conn.execute('''
                     UPDATE 절차상태
                     SET 상태='진행중'
                     WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-                ''', (site, year, month, cost_type, current_step_no + 1))
-
+                ''', (site, year, month, cost_type, row[0]))
             conn.commit()
         except Exception as e:
             st.error(f"❌ 다음 단계 이동 오류: {e}")
 
-# ✅ 추가된 요약 데이터 조회 함수
-def fetch_summary_data():
+def get_next_step(site, year, month, cost_type):
+    month = f"{int(month):02d}"
     with get_connection() as conn:
         try:
             cursor = conn.cursor()
             cursor.execute('''
-                SELECT 현장명, 월,
-                       SUM(기성금) AS 기성금,
-                       SUM(노무비) AS 노무비,
-                       SUM(투입비) AS 투입비
-                FROM 절차상태
-                GROUP BY 현장명, 월
-                ORDER BY 현장명, 월
-            ''')
-            return cursor.fetchall()
+                SELECT 단계번호 FROM 절차상태
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 상태 = '진행중'
+                ORDER BY 단계번호 ASC LIMIT 1
+            ''', (site, year, month, cost_type))
+            row = cursor.fetchone()
+            return row[0] if row else None
         except Exception as e:
-            st.error(f"❌ 요약 데이터 조회 오류: {e}")
-            return []
+            st.error(f"❌ 현재 진행중 단계 조회 오류: {e}")
+            return None
