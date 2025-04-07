@@ -91,23 +91,37 @@ def procedure_flow_view(site, year, month, cost_type):
         금액입력 = None
 
         if 금액필드:
-            금액입력 = st.number_input(f"💰 {금액필드} 입력", min_value=0, step=100000, key=f"{금액필드}_{step_no}")
+            금액입력 = st.number_input(
+                f"💰 {금액필드} 입력",
+                min_value=0,
+                step=100000,
+                key=f"{금액필드}_{step_no}"
+            )
             if 금액입력 is not None:
-                update_step_status(site, year, month, cost_type, step_no, 상태=상태,
-                                   금액컬럼=금액필드, 금액=금액입력)
+                update_step_status(
+                    site, year, month, cost_type, step_no,
+                    상태=상태,
+                    금액컬럼=금액필드,
+                    금액=금액입력
+                )
 
         # 자동 저장용 라디오 버튼
-        new_status = st.radio("📌 진행 상태 (자동저장)", ["진행중", "완료"],
-                              index=0 if 상태 == "진행중" else 1,
-                              horizontal=True,
-                              key=f"status_radio_{step_no}")
+        new_status = st.radio(
+            "📌 진행 상태 (자동저장)",
+            ["진행중", "완료"],
+            index=0 if 상태 == "진행중" else 1,
+            horizontal=True,
+            key=f"status_radio_{step_no}"
+        )
 
-        # 변경되었을 경우 즉시 저장
         if new_status != 상태:
-            update_step_status(site, year, month, cost_type, step_no, 상태=new_status)
+            update_step_status(
+                site, year, month, cost_type, step_no,
+                상태=new_status
+            )
             st.experimental_rerun()
 
-        # 다음 단계로 이동 버튼은 항상 표시
+        # 항상 표시되는 버튼 (단, 완료일 때만 작동)
         if st.button(➡️ 다음 단계로 이동", key="next_btn"):
             current_data = load_procedure_steps(site, year, month, cost_type)
             current_df = pd.DataFrame(current_data, columns=df.columns)
@@ -117,7 +131,6 @@ def procedure_flow_view(site, year, month, cost_type):
                 st.success("✅ 다음 단계로 이동하였습니다.")
                 st.experimental_rerun()
             else:
-                st.warning("❗ 진행 상태를 '완료'로 변경해야 다음 단계로 이동할 수 있습니다.")
-
+                st.warning("❗ 상태를 '완료'로 변경해야 이동할 수 있습니다.")
     else:
         st.info("🔒 이 단계는 귀하의 부서가 담당하지 않습니다.")
