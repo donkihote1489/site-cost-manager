@@ -18,8 +18,9 @@ def login_view():
 
     if st.sidebar.button("로그인"):
         if st.session_state["login_attempts"] >= MAX_LOGIN_ATTEMPTS:
-            st.sidebar.error("🚫 로그인 시도 횟수 초과")
+            st.sidebar.error("🚫 로그인 시도 횟수를 초과했습니다.")
             return
+
         user = USERS.get(username)
         if user and user["password"] == password:
             st.session_state["logged_in"] = True
