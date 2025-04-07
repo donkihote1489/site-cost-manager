@@ -32,6 +32,7 @@ def login_view():
             st.session_state["login_attempts"] += 1
             remaining = MAX_LOGIN_ATTEMPTS - st.session_state["login_attempts"]
             st.sidebar.error(f"❌ 로그인 실패. 남은 시도: {remaining}회")
+            st.sidebar.write("DEBUG: role=", st.session_state.get("role"))
 
 def check_login():
     return (
