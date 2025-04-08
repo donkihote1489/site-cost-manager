@@ -10,25 +10,20 @@ def summary_dashboard():
         return
 
     df = pd.DataFrame(rows, columns=["현장명", "월", "기성금", "노무비", "투입비"])
-
-    # 결측값 및 음수 방지 처리
     df = df.fillna(0)
-    df["기성금"] = df["기성금"].clip(lower=0)
-    df["노무비"] = df["노무비"].clip(lower=0)
-    df["투입비"] = df["투입비"].clip(lower=1)  # 0으로 나눗셈 방지
-
+    df["투입비"] = df["투입비"].replace(0, 1)  # 나눗셈 방지
     df["손수익"] = df["기성금"] - df["투입비"]
     df["노무비비중"] = df["노무비"] / df["투입비"]
 
     st.markdown("### 📊 현장별 비용 리포트")
     st.dataframe(df, use_container_width=True)
 
-    sites = df["현장명"].unique()
-    if len(sites) == 0:
+    sites = df["현장명"].unique().tolist()
+    if not sites:
         st.warning("⚠️ 선택할 수 있는 현장 데이터가 없습니다.")
         return
 
-    selected_site = st.selectbox("📍 리포트 확인할 현장 선택", sites)
+    selected_site = st.selectbox("📍 리포트 확인할 현장 선택", sites, key="dashboard_site")
     df_site = df[df["현장명"] == selected_site]
 
     if df_site.empty:
@@ -51,11 +46,11 @@ def summary_dashboard():
 
     st.subheader("📊 손수익 및 노무비 비중")
     fig2, ax2 = plt.subplots()
-    df_site.plot(x="월", y=["손수익"], kind="line", marker="o", ax=ax2)
+    df_site.plot(x="월", y="손수익", kind="line", marker="o", ax=ax2)
     ax2.set_ylabel("손수익")
 
     ax3 = ax2.twinx()
-    df_site.plot(x="월", y=["노무비비중"], kind="line", marker="s", color="orange", ax=ax3)
+    df_site.plot(x="월", y="노무비비중", kind="line", marker="s", color="orange", ax=ax3)
     ax3.set_ylabel("노무비 비중")
 
     st.pyplot(fig2)
