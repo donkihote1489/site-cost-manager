@@ -5,12 +5,14 @@ from db import (
     update_step_status, activate_next_step
 )
 
+# 금액 입력 대상 정의
 COST_INPUT_CONDITIONS = {
     ("2. 기성금 청구 및 수금", 3): "기성금",
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 3): "노무비",
     ("3. 노무 및 협력업체 지급 및 투입비 입력", 5): "투입비"
 }
 
+# 절차 흐름 정의
 def get_procedure_flow():
     return {
         "1. 계약(변경)체결": [
@@ -68,9 +70,8 @@ def render_step_controls(row, site, year, month, cost_type):
 
         if str(new_status).strip() != str(상태).strip():
             update_step_status(site, year, month, cost_type, step_no, new_status)
-            st.session_state["manual_rerun"] = True
+            st.session_state["step_completed"] = True
             st.rerun()
-
 
         금액필드 = COST_INPUT_CONDITIONS.get((cost_type, step_no))
         if 금액필드:
@@ -80,6 +81,7 @@ def render_step_controls(row, site, year, month, cost_type):
             )
             if 입력값 != row[금액필드]:
                 update_step_status(site, year, month, cost_type, step_no, new_status, 금액필드, 입력값)
+                st.session_state["step_completed"] = True
                 st.rerun()
     else:
         st.info("이 단계는 귀하의 부서가 담당하지 않습니다.")
@@ -87,40 +89,41 @@ def render_step_controls(row, site, year, month, cost_type):
 def render_next_step_button(row, site, year, month, cost_type):
     step_no = row["단계번호"]
 
+    if not st.session_state.get("step_completed", False):
+        st.info("✅ 상태를 '완료'로 저장한 뒤 다음 단계로 이동할 수 있습니다.")
+        return
+
     if st.button("다음 단계로 이동", key=f"next_{step_no}"):
-        # 1. 상태 재확인
         steps = load_procedure_steps(site, year, month, cost_type)
-        df_latest = pd.DataFrame(steps, columns=[
+        df = pd.DataFrame(steps, columns=[
             "현장명", "연도", "월", "비용유형", "단계번호",
             "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"
         ])
-        current_row = df_latest[df_latest["단계번호"] == step_no]
-        if current_row.empty:
-            st.error("❌ 단계 없음")
+        current = df[df["단계번호"] == step_no]
+        if current.empty:
+            st.error("❌ 단계를 찾을 수 없습니다.")
             return
 
-        상태값 = str(current_row.iloc[0]["상태"]).strip()
-        if 상태값 != "완료":
-            st.warning(f"⚠️ 현재 단계가 '완료' 상태여야 이동 가능 (현재 상태: {상태값})")
+        상태 = str(current.iloc[0]["상태"]).strip()
+        if 상태 != "완료":
+            st.warning(f"⚠️ 현재 단계 상태가 '완료'가 아닙니다. (현재 상태: {상태})")
             return
 
-        # 2. 실제 다음 단계 이동
-        update_step_status(site, year, month, cost_type, step_no, "완료")
         activate_next_step(site, year, month, cost_type, step_no)
-
-        # 3. 강제 세션 플래그 설정
-        st.session_state["manual_rerun"] = True
-        st.rerun()  # ✅ 단 한 번만 실행
-
+        st.success("✅ 다음 단계로 이동 완료")
+        st.session_state.pop("step_completed", None)
+        st.rerun()
 
 def procedure_flow_view(site, year, month, cost_type):
     st.header("📋 절차 진행 현황")
+
     flow = get_procedure_flow().get(cost_type)
     if not flow:
-        st.warning("절차 정의 없음")
+        st.warning("❌ 해당 비용유형에 대한 절차 흐름이 없습니다.")
         return
 
     insert_initial_steps(site, year, month, cost_type, flow)
+
     df = pd.DataFrame(
         load_procedure_steps(site, year, month, cost_type),
         columns=["현장명", "연도", "월", "비용유형", "단계번호", "작업내용", "담당부서", "상태", "기성금", "노무비", "투입비"]
@@ -133,3 +136,6 @@ def procedure_flow_view(site, year, month, cost_type):
 
     render_step_controls(current_row, site, year, month, cost_type)
     render_next_step_button(current_row, site, year, month, cost_type)
+
+
+
