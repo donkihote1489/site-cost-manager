@@ -1,56 +1,103 @@
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from db import fetch_summary_data
+import sqlite3
+from contextlib import contextmanager
 
-def summary_dashboard():
-    rows = fetch_summary_data()
-    if not rows:
-        st.info("📭 아직 입력된 비용 데이터가 없습니다.")
-        return
+DB_PATH = "database.db"
 
-    df = pd.DataFrame(rows, columns=["현장명", "월", "기성금", "노무비", "투입비"])
-    df = df.fillna(0)
-    df["투입비"] = df["투입비"].replace(0, 1)  # 나눗셈 방지
-    df["손수익"] = df["기성금"] - df["투입비"]
-    df["노무비비중"] = df["노무비"] / df["투입비"]
+@contextmanager
+def get_connection():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
-    st.markdown("### 📊 현장별 비용 리포트")
-    st.dataframe(df, use_container_width=True)
+def init_db():
+    with get_connection() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS 절차상태 (
+                현장명 TEXT,
+                연도 TEXT,
+                월 TEXT,
+                비용유형 TEXT,
+                단계번호 INTEGER,
+                작업내용 TEXT,
+                담당부서 TEXT,
+                상태 TEXT DEFAULT '진행중',
+                기성금 INTEGER DEFAULT 0,
+                노무비 INTEGER DEFAULT 0,
+                투입비 INTEGER DEFAULT 0,
+                PRIMARY KEY (현장명, 연도, 월, 비용유형, 단계번호)
+            )
+        ''')
+        conn.commit()
 
-    sites = df["현장명"].unique().tolist()
-    if not sites:
-        st.warning("⚠️ 선택할 수 있는 현장 데이터가 없습니다.")
-        return
+def insert_initial_steps(site, year, month, cost_type, step_list):
+    month = f"{int(month):02d}"
+    with get_connection() as conn:
+        for step_no, task, dept in step_list:
+            conn.execute('''
+                INSERT OR IGNORE INTO 절차상태
+                (현장명, 연도, 월, 비용유형, 단계번호, 작업내용, 담당부서)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (site, year, month, cost_type, step_no, task, dept))
+        conn.commit()
 
-    selected_site = st.selectbox("📍 리포트 확인할 현장 선택", sites, key="dashboard_site")
-    df_site = df[df["현장명"] == selected_site]
+def load_procedure_steps(site, year, month, cost_type):
+    month = f"{int(month):02d}"
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT * FROM 절차상태
+            WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=?
+            ORDER BY 단계번호
+        ''', (site, year, month, cost_type))
+        return cursor.fetchall()
 
-    if df_site.empty:
-        st.warning("📭 선택된 현장에 대한 데이터가 없습니다.")
-        return
+def update_step_status(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
+    month = f"{int(month):02d}"
+    with get_connection() as conn:
+        if 금액컬럼:
+            conn.execute(f'''
+                UPDATE 절차상태
+                SET 상태=?, {금액컬럼}=?
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+            ''', (상태, 금액, site, year, month, cost_type, step_no))
+        else:
+            conn.execute('''
+                UPDATE 절차상태
+                SET 상태=?
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+            ''', (상태, site, year, month, cost_type, step_no))
+        conn.commit()
 
-    with st.expander("📌 요약 수치 보기", expanded=True):
-        latest = df_site.sort_values("월").iloc[-1]
-        col1, col2, col3 = st.columns(3)
-        col1.metric("기성금", f"{latest['기성금']:,}원")
-        col2.metric("투입비", f"{latest['투입비']:,}원")
-        col3.metric("손수익", f"{latest['손수익']:,}원")
+def activate_next_step(site, year, month, cost_type, current_step_no):
+    month = f"{int(month):02d}"
+    with get_connection() as conn:
+        conn.execute('''
+            UPDATE 절차상태
+            SET 상태='완료'
+            WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+        ''', (site, year, month, cost_type, current_step_no))
 
-    st.subheader("📈 월별 비용 추이")
-    fig1, ax1 = plt.subplots()
-    df_site.plot(x="월", y=["기성금", "투입비", "노무비"], kind="bar", ax=ax1)
-    ax1.set_ylabel("금액")
-    ax1.set_title("기성금 / 투입비 / 노무비")
-    st.pyplot(fig1)
+        conn.execute('''
+            UPDATE 절차상태
+            SET 상태='진행중'
+            WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+              AND 상태 != '완료'
+        ''', (site, year, month, cost_type, current_step_no + 1))
 
-    st.subheader("📊 손수익 및 노무비 비중")
-    fig2, ax2 = plt.subplots()
-    df_site.plot(x="월", y="손수익", kind="line", marker="o", ax=ax2)
-    ax2.set_ylabel("손수익")
+        conn.commit()
 
-    ax3 = ax2.twinx()
-    df_site.plot(x="월", y="노무비비중", kind="line", marker="s", color="orange", ax=ax3)
-    ax3.set_ylabel("노무비 비중")
-
-    st.pyplot(fig2)
+def fetch_summary_data():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT 현장명, 월,
+                   SUM(기성금) AS 기성금,
+                   SUM(노무비) AS 노무비,
+                   SUM(투입비) AS 투입비
+            FROM 절차상태
+            GROUP BY 현장명, 월
+            ORDER BY 현장명, 월
+        ''')
+        return cursor.fetchall()
