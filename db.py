@@ -1,17 +1,13 @@
 import sqlite3
 from contextlib import contextmanager
-import streamlit as st
 
 DB_PATH = "database.db"
 
 @contextmanager
 def get_connection():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     try:
-        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         yield conn
-    except sqlite3.Error as e:
-        st.error(f"❌ DB 연결 오류: {e}")
-        raise
     finally:
         conn.close()
 
@@ -60,26 +56,19 @@ def load_procedure_steps(site, year, month, cost_type):
 def update_step_status(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
     month = f"{int(month):02d}"
     with get_connection() as conn:
-        try:
-            # ✅ 디버그 로그
-            st.code(f"💾 상태 업데이트 시도: step {step_no} → {상태}, 금액: {금액컬럼} = {금액}")
-
-            if 금액컬럼:
-                conn.execute(f'''
-                    UPDATE 절차상태
-                    SET 상태=?, {금액컬럼}=?
-                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-                ''', (상태, 금액, site, year, month, cost_type, step_no))
-            else:
-                conn.execute('''
-                    UPDATE 절차상태
-                    SET 상태=?
-                    WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
-                ''', (상태, site, year, month, cost_type, step_no))
-            conn.commit()
-
-        except Exception as e:
-            st.error(f"❌ 상태 업데이트 중 오류 발생: {e}")
+        if 금액컬럼:
+            conn.execute(f'''
+                UPDATE 절차상태
+                SET 상태=?, {금액컬럼}=?
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+            ''', (상태, 금액, site, year, month, cost_type, step_no))
+        else:
+            conn.execute('''
+                UPDATE 절차상태
+                SET 상태=?
+                WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
+            ''', (상태, site, year, month, cost_type, step_no))
+        conn.commit()
 
 def activate_next_step(site, year, month, cost_type, current_step_no):
     month = f"{int(month):02d}"
@@ -98,3 +87,17 @@ def activate_next_step(site, year, month, cost_type, current_step_no):
         ''', (site, year, month, cost_type, current_step_no + 1))
 
         conn.commit()
+
+def fetch_summary_data():
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT 현장명, 월,
+                   SUM(기성금) AS 기성금,
+                   SUM(노무비) AS 노무비,
+                   SUM(투입비) AS 투입비
+            FROM 절차상태
+            GROUP BY 현장명, 월
+            ORDER BY 현장명, 월
+        ''')
+        return cursor.fetchall()
