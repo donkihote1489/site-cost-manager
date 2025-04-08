@@ -1,4 +1,5 @@
 [server]
+runOnSave = false
 headless = true
-port = 8501
 enableCORS = false
+port = 8501
