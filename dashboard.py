@@ -1,14 +1,13 @@
-# dashboard.py - 모든 그래프 y축 단위 자동화 적용 (천원, 백만 원, 억원)
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import font_manager, rc, ticker
-from db import fetch_summary_data
+from db import fetch_summary_data, get_connection
 
+# 한글 폰트 설정
 font_path = "C:/Windows/Fonts/malgun.ttf"
 font_name = font_manager.FontProperties(fname=font_path).get_name()
 rc("font", family=font_name)
-
 
 def format_unit(value):
     if value >= 1_0000_0000:
@@ -34,6 +33,17 @@ def summary_dashboard():
     st.markdown("### 📊 현장별 비용 리포트")
     st.dataframe(df, use_container_width=True)
 
+    # 삭제 기능 추가
+    delete_targets = df[["현장명", "월"]].drop_duplicates()
+    selected = st.selectbox("🗑️ 삭제할 (현장 + 월) 데이터 선택", delete_targets.apply(lambda r: f"{r['현장명']} - {r['월']}", axis=1))
+    if st.button("선택한 데이터 삭제"):
+        site, month = selected.split(" - ")
+        with get_connection() as conn:
+            conn.execute("DELETE FROM 절차상태 WHERE 현장명=? AND 월=?", (site, month))
+            conn.commit()
+        st.success(f"✅ {selected} 삭제 완료!")
+        st.rerun()
+
     sites = df["현장명"].unique().tolist()
     if not sites:
         st.warning("선택할 수 있는 현장 데이터가 없습니다.")
@@ -47,12 +57,18 @@ def summary_dashboard():
         return
 
     with st.expander("📌 요약 수치 보기", expanded=True):
-        latest = df_site.sort_values("월").iloc[-1]
-        col1, col2, col3 = st.columns(3)
-        col1.metric("기성금", f"{latest['기성금']:,}원")
-        col2.metric("투입비", f"{latest['투입비']:,}원")
-        col3.metric("순수익", f"{latest['순수익']:,}원")
+         total_기성금 = df_site["기성금"].sum()
+         total_투입비 = df_site["투입비"].sum()
+         total_순수익 = total_기성금 - total_투입비
+         비율 = (total_투입비 / total_기성금 * 100) if total_기성금 != 0 else 0
 
+         col1, col2, col3 = st.columns(3)
+         col1.metric("기성금 누계", f"{int(total_기성금):,}원")
+         col2.metric("투입비 누계", f"{int(total_투입비):,}원", f"{비율:.1f}%")
+         col3.metric("순수익 누계", f"{int(total_순수익):,}원")
+
+
+    # 월별 비용 추이
     st.subheader("📈 월별 비용 추이")
     fig1, ax1 = plt.subplots(figsize=(6, 2))
     max1 = df_site[["기성금", "투입비", "노무비"]].values.max()
@@ -64,10 +80,12 @@ def summary_dashboard():
     ax1.set_ylabel(f"금액 ({unit_label1})")
     ax1.set_title("기성금 / 투입비 / 노무비", fontsize=12)
     ax1.legend(title="비용항목", labels=["기성금", "투입비", "노무비"], fontsize=9, title_fontsize=10)
+    ax1.set_xticklabels(df_plot1["월"], rotation=0)
     ax1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x:.1f}"))
     ax1.yaxis.grid(True, linestyle="--", alpha=0.3)
     st.pyplot(fig1)
 
+    # 월별 누계 그래프
     st.subheader("📈 월별 누계 그래프")
     df_cumsum = df_site.sort_values("월").copy()
     df_cumsum[["기성금", "투입비", "노무비"]] = df_cumsum[["기성금", "투입비", "노무비"]].cumsum()
@@ -88,11 +106,11 @@ def summary_dashboard():
     ax2.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x:.1f}"))
     ax2.legend(title="누계 항목")
     ax2.yaxis.grid(True, linestyle="--", alpha=0.3)
-
     ax2.text(x=len(df_cumsum)-1.1, y=df_plot2["투입비"].iloc[-1], s=f"투입비/기성금: {rate1:.1f}%", fontsize=8, color="black")
     ax2.text(x=len(df_cumsum)-1.1, y=df_plot2["노무비"].iloc[-1], s=f"노무비/투입비: {rate2:.1f}%", fontsize=8, color="black")
     st.pyplot(fig2)
 
+    # 월별 순수익 그래프
     st.subheader("📈 월별 순수익 그래프")
     df_site = df_site.sort_values("월").copy()
     max_val = df_site["순수익"].max()
