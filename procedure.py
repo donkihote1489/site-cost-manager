@@ -143,8 +143,13 @@ def procedure_flow_view(site, year, month, cost_type):
         st.warning("⚠️ 이 단계는 귀하의 담당 부서가 아닙니다. 수정 권한이 없습니다.")
 
     if state["status"][current_step] == "완료":
-        if st.button("다음 단계로 이동"):
-            if state["current_step"] < state["total_steps"]:
+         cost_key = (cost_type, state["current_step"])
+         if cost_key in COST_INPUT_CONDITIONS:
+              label = COST_INPUT_CONDITIONS[cost_key]
+              if label not in state["amounts"]:
+                    st.warning(f"⚠️ {label}을 저장한 뒤에 다음 단계로 이동할 수 있습니다.")
+              elif st.button("다음 단계로 이동"):
+           if state["current_step"] < state["total_steps"]:
                 state["current_step"] += 1
                 save_state_to_file()
                 st.rerun()
