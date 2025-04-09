@@ -87,6 +87,8 @@ def procedure_flow_view(site, year, month, cost_type):
     my_role = st.session_state.get("role", "")
     is_authorized = (my_role == 담당부서)
 
+    debug_log = {}
+
     if is_authorized:
         상태 = st.radio("진행 상태", ["진행중", "완료"],
                         index=0 if state["status"][current_step] == "진행중" else 1)
@@ -107,6 +109,18 @@ def procedure_flow_view(site, year, month, cost_type):
             current_value = state["amounts"].get(label, 0)
             입력값 = st.number_input(f"💰 {label} 입력", min_value=0, step=100000, value=current_value)
 
+            # 디버깅: 단계번호 다시 계산
+            actual_step_no = None
+            for i, (step_label_name, _) in enumerate(steps, start=1):
+                if label in step_label_name:
+                    actual_step_no = i
+                    break
+
+            debug_log["입력값"] = 입력값
+            debug_log["기존값"] = current_value
+            debug_log["단계번호(재계산)"] = actual_step_no
+            debug_log["컬럼"] = label
+
             if st.button(f"💾 {label} 저장"):
                 state["amounts"][label] = 입력값
 
@@ -115,7 +129,7 @@ def procedure_flow_view(site, year, month, cost_type):
                     year=year,
                     month=month,
                     cost_type=cost_type,
-                    step_no=state["current_step"],
+                    step_no=actual_step_no,
                     상태=상태,
                     금액컬럼=label,
                     금액=입력값
@@ -134,7 +148,7 @@ def procedure_flow_view(site, year, month, cost_type):
     else:
         st.warning("⚠️ 이 단계는 귀하의 담당 부서가 아닙니다. 수정 권한이 없습니다.")
 
-    # 다음 단계로 이동
+    # 다음 단계 이동 버튼
     if state["status"][current_step] == "완료":
         cost_key = (cost_type, state["current_step"])
         if cost_key in COST_INPUT_CONDITIONS:
@@ -153,3 +167,7 @@ def procedure_flow_view(site, year, month, cost_type):
                 st.rerun()
     else:
         st.button("다음 단계로 이동", disabled=True)
+
+    # 디버깅 정보 출력
+    with st.expander("🛠 디버깅 정보"):
+        st.json(debug_log)
