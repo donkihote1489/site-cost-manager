@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from matplotlib import font_manager, rcParams
+from matplotlib import ticker
 from db import fetch_summary_data
 
 
