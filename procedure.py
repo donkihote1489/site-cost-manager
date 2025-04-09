@@ -15,8 +15,8 @@ COST_INPUT_CONDITIONS = {
 }
 
 DEPARTMENT_EMAILS = {
-    "현장": "siempreran@kwansoo.biz",
-    "본사 공무팀": "beon333@kwansoo.biz",
+    "현장": "beon333@kwansoo.biz",
+    "본사 공무팀": "jaewon@kwansoo.biz",
     "경영지원부": "samin@kwansoo.biz"
 }
 
