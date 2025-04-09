@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-rcParams['font.family'] = 'DejaVu Sans'
-from db import fetch_summary_data, get_connection
+from matplotlib import ticker
 
 # 한글 폰트 설정
 
