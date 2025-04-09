@@ -5,9 +5,6 @@ from matplotlib import font_manager, rc, ticker
 from db import fetch_summary_data, get_connection
 
 # 한글 폰트 설정
-font_path = "C:/Windows/Fonts/malgun.ttf"
-font_name = font_manager.FontProperties(fname=font_path).get_name()
-rc("font", family=font_name)
 
 def format_unit(value):
     if value >= 1_0000_0000:
