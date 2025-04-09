@@ -2,18 +2,17 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-from matplotlib import ticker
-from db import fetch_summary_data
 from matplotlib import font_manager, rcParams
 
 font_path = os.path.join(os.path.dirname(__file__), "assets", "NanumGothicLight.ttf")
 
 if os.path.exists(font_path):
     font_manager.fontManager.addfont(font_path)
-    rcParams["font.family"] = "NanumGothicLight"
+    font_name = font_manager.FontProperties(fname=font_path).get_name()
+    rcParams["font.family"] = font_name
+    st.write("✅ 한글 폰트 적용됨:", font_name)
 else:
-    st.warning("⚠️ NanumGothicLight.ttf 폰트를 찾을 수 없습니다.")
-
+    st.warning("⚠️ 한글 폰트 파일을 찾을 수 없습니다.")
 
 # 한글 폰트 설정
 
