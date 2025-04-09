@@ -2,10 +2,9 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-from matplotlib import font_manager, rcParams
 from matplotlib import ticker
 from db import fetch_summary_data
-
+from matplotlib import font_manager, rcParams
 
 font_path = os.path.join(os.path.dirname(__file__), "assets", "NanumGothicLight.ttf")
 
