@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from matplotlib import font_manager, rcParams
+from db import fetch_summary_data
+
 
 font_path = os.path.join(os.path.dirname(__file__), "assets", "NanumGothicLight.ttf")
 
