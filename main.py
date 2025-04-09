@@ -5,7 +5,7 @@ from db import init_db
 from procedure import procedure_flow_view, get_procedure_flow
 
 st.set_page_config(page_title="현장비용 관리 시스템", layout="wide")
-st.title("🏗️ 전문건설 현장비용 관리 시스템")
+st.title("🏗️ 관수이앤씨 현장비용 관리 시스템")
 
 init_db()
 
