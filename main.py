@@ -9,6 +9,11 @@ st.title("🏗️ 관수이앤씨 현장비용 관리 시스템")
 
 init_db()
 
+# ✅ 사이드바 최상단에 로그아웃 버튼 추가
+if st.sidebar.button("🔒 로그아웃"):
+    st.session_state.clear()
+    st.experimental_rerun()
+
 # 세션 상태 점검
 if not check_login():
     login_view()
