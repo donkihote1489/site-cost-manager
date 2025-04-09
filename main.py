@@ -14,6 +14,11 @@ if not check_login():
     login_view()
     st.stop()
 
+# ✅ 사이드바 최상단에 로그아웃 버튼
+if st.sidebar.button("🔒 로그아웃"):
+    st.session_state.clear()
+    st.experimental_rerun()
+
 st.sidebar.success(f"✅ 로그인됨: {st.session_state.get('role')}")
 
 # 📍 입력 파라미터 (현장, 연도, 월, 비용유형)
@@ -23,7 +28,7 @@ year = st.sidebar.text_input("연도", value=str(datetime.now().year))
 month = st.sidebar.selectbox("월", [f"{i:02d}" for i in range(1, 13)])
 cost_type = st.sidebar.selectbox("비용유형", list(get_procedure_flow().keys()))
 
-# ✅ 사이드바 개별 절차 초기화 기능 추가
+# ✅ 사이드바 개별 절차 초기화 기능
 st.sidebar.markdown("### 🧹 절차 초기화 (개별)")
 
 if "절차상태" in st.session_state:
@@ -56,6 +61,9 @@ def is_valid_inputs():
 
 # 🚀 절차 UI 실행
 if is_valid_inputs():
+    # ✅ 비용유형 표시 추가
+    st.header("📋 절차 진행 현황")
+    st.markdown(f"**비용유형:** {cost_type}")
     procedure_flow_view(site, year, month, cost_type)
 
 # 📊 결과 리포트 실행
