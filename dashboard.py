@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from matplotlib import ticker
+from db import fetch_summary_data 
 
 # 한글 폰트 설정
 
