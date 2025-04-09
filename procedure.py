@@ -72,7 +72,6 @@ def procedure_flow_view(site, year, month, cost_type):
     steps = get_procedure_flow()[cost_type]
 
     st.header("📋 절차 진행 현황")
-    st.button("🔒 로그아웃", on_click=lambda: st.session_state.clear())
 
     current_index = state["current_step"] - 1
 
