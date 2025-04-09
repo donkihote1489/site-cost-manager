@@ -2,8 +2,11 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-from matplotlib import ticker
-from db import fetch_summary_data 
+from matplotlib import font_manager
+
+font_path = "assets/NanumGothic.ttf"
+font_manager.fontManager.addfont(font_path)
+rcParams['font.family'] = 'NanumGothic'
 
 # 한글 폰트 설정
 
