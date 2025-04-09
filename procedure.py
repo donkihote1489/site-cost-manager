@@ -71,6 +71,7 @@ def procedure_flow_view(site, year, month, cost_type):
     state = st.session_state.절차상태[key]
     steps = get_procedure_flow()[cost_type]
 
+    st.subheader(f"📌 비용유형: {cost_type}")   
     st.header("📋 절차 진행 현황")
     st.button("🔒 로그아웃", on_click=lambda: st.session_state.clear())
 
