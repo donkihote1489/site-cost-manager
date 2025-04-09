@@ -31,7 +31,12 @@ def summary_dashboard():
     df["노무비비중"] = df["노무비"] / df["투입비"]
 
     st.markdown("### 📊 현장별 비용 리포트")
-    st.dataframe(df, use_container_width=True)
+    df_formatted = df.copy()
+    for col in ["기성금", "투입비", "노무비", "순수익"]:
+         df_formatted[col] = df_formatted[col].apply(lambda x: f"{int(x):,}")
+
+    st.dataframe(df_formatted, use_container_width=True)
+
 
     # 삭제 기능 추가
     delete_targets = df[["현장명", "월"]].drop_duplicates()
