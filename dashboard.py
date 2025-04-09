@@ -2,17 +2,24 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-from matplotlib import font_manager, rcParams
+from matplotlib import ticker, font_manager, rcParams
 
+from db import fetch_summary_data
+
+# ✅ NanumGothicLight.ttf 폰트 로딩 (Streamlit Cloud 호환 방식)
 font_path = os.path.join(os.path.dirname(__file__), "assets", "NanumGothicLight.ttf")
 
 if os.path.exists(font_path):
-    font_manager.fontManager.addfont(font_path)
-    font_name = font_manager.FontProperties(fname=font_path).get_name()
-    rcParams["font.family"] = font_name
-    st.write("✅ 한글 폰트 적용됨:", font_name)
+    try:
+        font_manager.fontManager.addfont(font_path)
+        font_name = font_manager.FontProperties(fname=font_path).get_name()
+        rcParams["font.family"] = font_name
+        st.write(f"✅ 한글 폰트 적용됨: {font_name}")
+    except Exception as e:
+        st.warning(f"⚠️ 폰트 적용 중 오류 발생: {e}")
 else:
-    st.warning("⚠️ 한글 폰트 파일을 찾을 수 없습니다.")
+    st.warning("⚠️ 한글 폰트 파일을 찾을 수 없습니다. 기본 폰트를 사용합니다.")
+
 
 # 한글 폰트 설정
 
