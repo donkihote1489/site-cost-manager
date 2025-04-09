@@ -163,36 +163,30 @@ def procedure_flow_view(site, year, month, cost_type):
     else:
         st.warning("⚠️ 이 단계는 귀하의 담당 부서가 아닙니다. 수정 권한이 없습니다.")
 
-    if state["status"][current_step] == "완료":
-         cost_key = (cost_type, state["current_step"])
-         if cost_key in COST_INPUT_CONDITIONS:
-              label = COST_INPUT_CONDITIONS[cost_key]
-              if label not in state["amounts"]:
-                    st.warning(f"⚠️ {label}을 저장한 뒤에 다음 단계로 이동할 수 있습니다.")
-                    return
+        if state["status"][current_step] == "완료":
+        cost_key = (cost_type, state["current_step"])
+        if cost_key in COST_INPUT_CONDITIONS:
+            label = COST_INPUT_CONDITIONS[cost_key]
+            if label not in state["amounts"]:
+                st.warning(f"⚠️ {label}을 저장한 뒤에 다음 단계로 이동할 수 있습니다.")
+                return
 
-if st.button("다음 단계로 이동"):
-    if state["current_step"] < state["total_steps"]:
-        state["current_step"] += 1
-        save_state_to_file()
+        if st.button("다음 단계로 이동"):
+            if state["current_step"] < state["total_steps"]:
+                state["current_step"] += 1
+                save_state_to_file()
 
-        # 📧 이메일 알림 추가
-        next_step, next_dept = steps[state["current_step"] - 1]
-        to_email = DEPARTMENT_EMAILS.get(next_dept)
-        if to_email:
-            subject = f"[알림] '{site}' 현장 절차 알림"
-            body = (
-                f"{site} 현장의 '{current_step}' 단계가 완료되었습니다.\n"
-                f"귀 부서에서 담당하는 다음 단계는 '{next_step}'입니다.\n\n"
-                f"- 연도: {year} / 월: {month}\n"
-                f"- 비용유형: {cost_type}"
-            )
-            send_email(to_email, subject, body)
+                # 📧 이메일 알림 추가
+                next_step, next_dept = steps[state["current_step"] - 1]
+                to_email = DEPARTMENT_EMAILS.get(next_dept)
+                if to_email:
+                    subject = f"[알림] '{site}' 현장 절차 알림"
+                    body = f\"\"\"{site} 현장의 '{current_step}' 단계가 완료되었습니다.\n\n귀 부서에서 담당하는 다음 단계는 '{next_step}'입니다.\n\n- 연도: {year} / 월: {month}\n- 비용유형: {cost_type}\"\"\"
+                    send_email(to_email, subject, body)
 
-        st.rerun()
-    else:
-        st.success("🎉 모든 단계가 완료되었습니다.")
-        st.rerun()
-
+                st.rerun()
+            else:
+                st.success("🎉 모든 단계가 완료되었습니다.")
+                st.rerun()
     else:
         st.button("다음 단계로 이동", disabled=True)
