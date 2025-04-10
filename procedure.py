@@ -21,7 +21,7 @@ DEPARTMENT_EMAILS = {
 }
 
 def send_email(to_email, subject, body):
-    from_email = "sjwgood9120@gmail.com"
+    from_email = "sjwgood9120@gmail.com"  # 또는 jaewon@kwansoo.biz
     password = "kwansoo1234!"
 
     msg = MIMEText(body)
@@ -29,10 +29,7 @@ def send_email(to_email, subject, body):
     msg["From"] = from_email
     msg["To"] = to_email
 
-    st.write("📧 [DEBUG] 메일 발송 시도:", to_email)
-    st.write("📤 [DEBUG] 다음 단계:", next_step)
-    st.write("📤 [DEBUG] 다음 부서:", next_dept)
-    st.write("📤 [DEBUG] 수신자 이메일:", to_email)
+    st.write("📧 [DEBUG] 메일 발송 대상:", to_email)  # ✅ 안전한 디버깅 로그만 남김
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
