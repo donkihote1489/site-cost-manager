@@ -190,6 +190,10 @@ def procedure_flow_view(site, year, month, cost_type):
                 next_step, next_dept = steps[state["current_step"] - 1]
                 to_email = DEPARTMENT_EMAILS.get(next_dept)
                 if to_email:
+                    st.write("📤 [DEBUG] 이메일 발송 준비됨")
+                    st.write("📤 [DEBUG] 다음 부서:", next_dept)
+                    st.write("📤 [DEBUG] 수신 이메일:", to_email)
+
                     subject = f"[알림] '{site}' 현장 절차 알림"
                     body = f"""{site} 현장의 '{current_step}' 단계가 완료되었습니다.\n\n귀 부서에서 담당하는 다음 단계는 '{next_step}'입니다.\n\n- 연도: {year} / 월: {month}\n- 비용유형: {cost_type}"""
                     send_email(to_email, subject, body)
