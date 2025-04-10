@@ -79,16 +79,17 @@ def summary_dashboard():
         return
 
     with st.expander("📌 요약 수치 보기", expanded=True):
-         total_기성금 = df_site["기성금"].sum()
-         total_투입비 = df_site["투입비"].sum()
-         total_순수익 = total_기성금 - total_투입비
-         비율 = (total_투입비 / total_기성금 * 100) if total_기성금 != 0 else 0
+        total_기성금 = df_site["기성금"].sum()
+        total_투입비 = df_site["투입비"].sum()
+        total_노무비 = df_site["노무비"].sum()
+        total_손익 = total_기성금 - total_투입비
+        비율 = (total_투입비 / total_기성금 * 100) if total_기성금 != 0 else 0
 
-         col1, col2, col3 = st.columns(3)
-         col1.metric("기성금 누계", f"{int(total_기성금):,}원")
-         col2.metric("투입비 누계", f"{int(total_투입비):,}원", f"{비율:.1f}%")
-         col3.metric("순수익 누계", f"{int(total_순수익):,}원")
-
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("기성금 누계", f"{int(total_기성금):,}원")
+        col2.metric("투입비 누계", f"{int(total_투입비):,}원", f"{비율:.1f}%")
+        col3.metric("노무비 누계", f"{int(total_노무비):,}원")
+        col4.metric("현장손익 누계", f"{int(total_손익):,}원")
 
     # 월별 비용 추이
     st.subheader("📈 월별 비용 추이")
