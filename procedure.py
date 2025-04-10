@@ -21,8 +21,8 @@ DEPARTMENT_EMAILS = {
 }
 
 def send_email(to_email, subject, body):
-    from_email = "sjwgood9120@gmail.com"  # 또는 jaewon@kwansoo.biz
-    password = "kwansoo1234!"
+    from_email = "sjwgood9120@gmail.com"
+    password = "vbyn gkhk wrnr lorf"  # ← 앱 비밀번호 (띄어쓰기 없이 붙여넣기)
 
     msg = MIMEText(body)
     msg["Subject"] = subject
