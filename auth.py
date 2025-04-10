@@ -4,6 +4,7 @@ USERS = {
     "siteuser1": {"password": "1234", "role": "현장"},
     "office1": {"password": "abcd", "role": "본사 공무팀"},
     "finance1": {"password": "pass", "role": "경영지원부"},
+    "admin1": {"password": "adminpass", "role": "관리자"}
 }
 
 MAX_LOGIN_ATTEMPTS = 5
