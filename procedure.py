@@ -1,4 +1,30 @@
 import streamlit as st
+import smtplib
+from email.mime.text import MIMEText
+
+DEPARTMENT_EMAILS = {
+    "현장": "siempreran@kwansoo.biz",
+    "본사 공무팀": "beon333@kwansoo.biz",
+    "경영지원부": "samin@kwansoo.biz"
+}
+
+def send_email(to_email, subject, body):
+    from_email = "jaewon@kwansoo.biz"
+    password = "kwansoo1234"
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = from_email
+    msg["To"] = to_email
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(from_email, password)
+            server.send_message(msg)
+        st.success(f"📧 이메일 전송 완료 → {to_email}")
+    except Exception as e:
+        st.error(f"📛 이메일 전송 실패: {e}")
+
 import pandas as pd
 import json
 import os
@@ -157,10 +183,26 @@ def procedure_flow_view(site, year, month, cost_type):
                 return
 
         if st.button("다음 단계로 이동"):
-            if state["current_step"] < state["total_steps"]:
-                state["current_step"] += 1
-                save_state_to_file()
-                st.rerun()
+    if state["current_step"] < state["total_steps"]:
+        state["current_step"] += 1
+        save_state_to_file()
+
+        # 📧 이메일 알림 전송
+        next_step, next_dept = steps[state["current_step"] - 1]
+        to_email = DEPARTMENT_EMAILS.get(next_dept)
+        if to_email:
+            subject = f"[알림] '{site}' 현장 절차 알림"
+            body = f\"\"\"{site} 현장의 '{current_step}' 단계가 완료되었습니다.
+
+귀 부서에서 담당하는 다음 단계는 '{next_step}'입니다.
+
+- 연도: {year} / 월: {month}
+- 비용유형: {cost_type}
+\"\"\"
+            send_email(to_email, subject, body)
+
+        st.rerun()
+
             else:
                 st.success("🎉 모든 단계가 완료되었습니다.")
                 st.rerun()
