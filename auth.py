@@ -1,179 +1,37 @@
 import streamlit as st
-import pandas as pd
-import json
-import os
-from db import update_step_status
 
-SAVE_PATH = "절차상태저장.json"
-
-COST_INPUT_CONDITIONS = {
-    ("2. 기성금 청구 및 수금", 3): "기성금",
-    ("3. 노무 및 협력업체 지급 및 투입비 입력", 3): "노무비",
-    ("3. 노무 및 협력업체 지급 및 투입비 입력", 5): "투입비"
+USERS = {
+    "siteuser1": {"password": "1234", "role": "현장"},
+    "office1": {"password": "abcd", "role": "본사 공무팀"},
+    "finance1": {"password": "pass", "role": "경영지원부"},
 }
 
-def get_procedure_flow():
-    return {
-        "1. 계약(변경)체결": [
-            ("계약(변경)보고", "현장"),
-            ("계약(변경)확인", "본사 공무팀"),
-            ("계약 승인 요청 접수", "현장"),
-            ("계약 진행 요청", "본사 공무팀"),
-            ("보증 등 발행 협력사 등록", "경영지원부"),
-            ("Kiscon사이트 등록", "본사 공무팀")
-        ],
-        "2. 기성금 청구 및 수금": [
-            ("기성조서 작성", "현장"),
-            ("예상 기성 확인", "본사 공무팀"),
-            ("기성 확정", "현장"),
-            ("발행 요청 확인", "본사 공무팀"),
-            ("계산서 발행 및 협력사 등록", "경영지원부"),
-            ("기성 금액 수금", "경영지원부"),
-            ("Kiscon 등록", "본사 공무팀")
-        ],
-        "3. 노무 및 협력업체 지급 및 투입비 입력": [
-            ("노무대장 작성", "현장"),
-            ("노무대장 확인", "본사 공무팀"),
-            ("노무비 신고", "경영지원부"),
-            ("보험료 확정분 및 노무대장 작성", "경영지원부"),
-            ("하도급지킴이 등록", "현장"),
-            ("하도급지킴이 확인", "본사 공무팀"),
-            ("하도급지킴이 지급 확인,지급", "경영지원부")
-        ],
-        "4. 선금(외 기타)보증": [
-            ("선금 공문 접수", "현장"),
-            ("선금 공문 보고", "본사 공무팀"),
-            ("선금신청 및 공문회신", "본사 공무팀"),
-            ("보증 등 발행 협력사 등록", "경영지원부")
-            ("원도급사 통보 Kiscon 등록", "본사 공무팀")
-        ]
-    }
+MAX_LOGIN_ATTEMPTS = 5
 
-def save_state_to_file():
-    with open(SAVE_PATH, "w", encoding="utf-8") as f:
-        json.dump(st.session_state.절차상태, f, ensure_ascii=False, indent=2)
+def login_view():
+    st.sidebar.header("🔐 로그인")
 
-def load_state_from_file():
-    if os.path.exists(SAVE_PATH):
-        with open(SAVE_PATH, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+    if "login_attempts" not in st.session_state:
+        st.session_state["login_attempts"] = 0
 
-def procedure_flow_view(site, year, month, cost_type):
-    key = f"{site}_{year}_{month}_{cost_type}"
+    username = st.sidebar.text_input("사용자 ID", key="login_user")
+    password = st.sidebar.text_input("비밀번호", type="password", key="login_pass")
 
-    if "절차상태" not in st.session_state:
-        st.session_state.절차상태 = load_state_from_file()
+    if st.sidebar.button("로그인"):
+        if st.session_state["login_attempts"] >= MAX_LOGIN_ATTEMPTS:
+            st.sidebar.error("🚫 로그인 시도 횟수를 초과했습니다.")
+            return
 
-    if key not in st.session_state.절차상태:
-        steps = get_procedure_flow()[cost_type]
-        st.session_state.절차상태[key] = {
-            "current_step": 1,
-            "status": {label: "진행중" for label, _ in steps},
-            "amounts": {},
-            "total_steps": len(steps)
-        }
+        user = USERS.get(username)
+        if user and user["password"] == password:
+            st.session_state["logged_in"] = True
+            st.session_state["user"] = username
+            st.session_state["role"] = user["role"]
+            st.session_state["login_attempts"] = 0
+        else:
+            st.session_state["login_attempts"] += 1
+            remaining = MAX_LOGIN_ATTEMPTS - st.session_state["login_attempts"]
+            st.sidebar.error(f"❌ 로그인 실패. 남은 시도: {remaining}회")
 
-    state = st.session_state.절차상태[key]
-    steps = get_procedure_flow()[cost_type]
-
-    st.subheader(f"📌 비용유형: {cost_type}")   
-    st.header("📋 절차 진행 현황")
-    current_index = state["current_step"] - 1
-
-    if current_index >= len(steps):
-        st.success("🎉 모든 단계가 완료되었습니다.")
-        return
-
-    current_step, 담당부서 = steps[current_index]
-    step_label = f"{current_index+1}. {current_step}"
-    st.subheader(f"📍 현재 단계: {step_label}")
-    st.markdown(f"담당 부서: `{담당부서}`")
-
-    my_role = st.session_state.get("role", "")
-    is_authorized = (my_role == 담당부서)
-
-    debug_log = {}
-
-    if is_authorized:
-        상태 = st.radio("진행 상태", ["진행중", "완료"],
-                        index=0 if state["status"][current_step] == "진행중" else 1)
-        state["status"][current_step] = 상태
-
-        update_step_status(
-            site=site,
-            year=year,
-            month=month,
-            cost_type=cost_type,
-            step_no=state["current_step"],
-            상태=상태
-        )
-
-        cost_key = (cost_type, state["current_step"])
-        if cost_key in COST_INPUT_CONDITIONS:
-            label = COST_INPUT_CONDITIONS[cost_key]
-            current_value = state["amounts"].get(label, 0)
-            입력값 = st.number_input(f"💰 {label} 입력", min_value=0, step=100000, value=current_value)
-
-            # 디버깅: 단계번호 다시 계산
-            actual_step_no = None
-            for i, (step_label_name, _) in enumerate(steps, start=1):
-                if label in step_label_name:
-                    actual_step_no = i
-                    break
-
-            debug_log["입력값"] = 입력값
-            debug_log["기존값"] = current_value
-            debug_log["단계번호(재계산)"] = actual_step_no
-            debug_log["컬럼"] = label
-
-            if st.button(f"💾 {label} 저장"):
-                state["amounts"][label] = 입력값
-
-                update_step_status(
-                    site=site,
-                    year=year,
-                    month=month,
-                    cost_type=cost_type,
-                    step_no=actual_step_no,
-                    상태=상태,
-                    금액컬럼=label,
-                    금액=입력값
-                )
-
-                save_state_to_file()
-                st.success(f"✅ {label}이 DB에 저장되었습니다.")
-                st.rerun()
-
-            if label in state["amounts"]:
-                st.info(f"💾 저장된 {label}: {state['amounts'][label]:,}원")
-            else:
-                st.warning(f"❗ 아직 {label}이 저장되지 않았습니다.")
-
-        save_state_to_file()
-    else:
-        st.warning("⚠️ 이 단계는 귀하의 담당 부서가 아닙니다. 수정 권한이 없습니다.")
-
-    # 다음 단계 이동 버튼
-    if state["status"][current_step] == "완료":
-        cost_key = (cost_type, state["current_step"])
-        if cost_key in COST_INPUT_CONDITIONS:
-            label = COST_INPUT_CONDITIONS[cost_key]
-            if label not in state["amounts"]:
-                st.warning(f"⚠️ {label}을 저장한 뒤에 다음 단계로 이동할 수 있습니다.")
-                return
-
-        if st.button("다음 단계로 이동"):
-            if state["current_step"] < state["total_steps"]:
-                state["current_step"] += 1
-                save_state_to_file()
-                st.rerun()
-            else:
-                st.success("🎉 모든 단계가 완료되었습니다.")
-                st.rerun()
-    else:
-        st.button("다음 단계로 이동", disabled=True)
-
-    # 디버깅 정보 출력
-    with st.expander("🛠 디버깅 정보"):
-        st.json(debug_log)
+def check_login():
+    return st.session_state.get("logged_in", False)
