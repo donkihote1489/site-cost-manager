@@ -93,8 +93,6 @@ def procedure_flow_view(site, year, month, cost_type):
     my_role = st.session_state.get("role", "")
     is_authorized = (my_role == 담당부서)
 
-    debug_log = {}
-
     if is_authorized:
         상태 = st.radio("진행 상태", ["진행중", "완료"],
                         index=0 if state["status"][current_step] == "진행중" else 1)
@@ -121,11 +119,6 @@ def procedure_flow_view(site, year, month, cost_type):
                 if label in step_label_name:
                     actual_step_no = i
                     break
-
-            debug_log["입력값"] = 입력값
-            debug_log["기존값"] = current_value
-            debug_log["단계번호(재계산)"] = actual_step_no
-            debug_log["컬럼"] = label
 
             if st.button(f"💾 {label} 저장"):
                 state["amounts"][label] = 입력값
@@ -173,7 +166,3 @@ def procedure_flow_view(site, year, month, cost_type):
                 st.rerun()
     else:
         st.button("다음 단계로 이동", disabled=True)
-
-    # 디버깅 정보 출력
-    with st.expander("🛠 디버깅 정보"):
-        st.json(debug_log)
