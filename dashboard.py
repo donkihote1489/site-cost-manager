@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from matplotlib import ticker, font_manager, rcParams
-
+from db import get_connection
 from db import fetch_summary_data
 
 # ✅ NanumGothicLight.ttf 폰트 로딩 (Streamlit Cloud 호환 방식)
