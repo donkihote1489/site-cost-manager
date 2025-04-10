@@ -43,12 +43,15 @@ def summary_dashboard():
     df["투입비"] = df["투입비"].replace(0, 1)
     df["순수익"] = df["기성금"] - df["투입비"]
     df["순수익비중"] = df["순수익"] / df["기성금"] * 100
-    df["노무비비중"] = df["노무비"] / df["투입비"]
+    df["노무비비중"] = df["노무비"] / df["투입비"] * 100
 
     st.markdown("### 📊 현장별 비용 리포트")
     df_formatted = df.copy()
     for col in ["기성금", "투입비", "노무비", "순수익"]:
          df_formatted[col] = df_formatted[col].apply(lambda x: f"{int(x):,}")
+    df_formatted["순수익비중"] = df["순수익비중"].apply(lambda x: f"{x:.2f}%")
+    df_formatted["노무비비중"] = df["노무비비중"].apply(lambda x: f"{x:.2f}%")
+    df_formatted = df_formatted.rename(columns={"순수익": "순수익(기성금-투입비)"})
 
     st.dataframe(df_formatted, use_container_width=True)
 
