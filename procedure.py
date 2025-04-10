@@ -29,6 +29,11 @@ def send_email(to_email, subject, body):
     msg["From"] = from_email
     msg["To"] = to_email
 
+    st.write("📧 [DEBUG] 메일 발송 시도:", to_email)
+    st.write("📤 [DEBUG] 다음 단계:", next_step)
+    st.write("📤 [DEBUG] 다음 부서:", next_dept)
+    st.write("📤 [DEBUG] 수신자 이메일:", to_email)
+
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(from_email, password)
