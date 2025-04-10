@@ -38,7 +38,7 @@ def summary_dashboard():
         st.info("📭 아직 입력된 비용 데이터가 없습니다.")
         return
 
-    df = pd.DataFrame(rows, columns=["현장명", "월", "기성금", "노무비", "투입비"])
+    df = pd.DataFrame(rows, columns=["현장명", "연도","월", "기성금", "노무비", "투입비"])
     df = df.fillna(0)
     df["투입비"] = df["투입비"].replace(0, 1)
     df["순수익"] = df["기성금"] - df["투입비"]
