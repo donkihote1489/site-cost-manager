@@ -92,12 +92,12 @@ def fetch_summary_data():
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT 현장명, 월,
+            SELECT 현장명, 연도, 월,
                    SUM(기성금) AS 기성금,
                    SUM(노무비) AS 노무비,
                    SUM(투입비) AS 투입비
             FROM 절차상태
-            GROUP BY 현장명, 월
-            ORDER BY 현장명, 월
+            GROUP BY 현장명, 연도, 월
+            ORDER BY 현장명, 연도, 월
         ''')
         return cursor.fetchall()
