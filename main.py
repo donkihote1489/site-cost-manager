@@ -20,6 +20,11 @@ if not check_login():
 
 st.sidebar.success(f"✅ 로그인됨: {st.session_state.get('role')}")
 
+# 이메일 전송 기능 토글
+st.sidebar.markdown("---")
+st.sidebar.header("📩 이메일 설정")
+st.sidebar.checkbox("📧 이메일 알림 전송", value=True, key="email_enabled")
+
 # --- 📂 입력 파라미터 선택 영역 ---
 st.sidebar.markdown("---")
 st.sidebar.header("📂 입력 파라미터 선택")
