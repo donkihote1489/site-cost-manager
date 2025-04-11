@@ -56,18 +56,36 @@ def load_procedure_steps(site, year, month, cost_type):
 def update_step_status(site, year, month, cost_type, step_no, 상태, 금액컬럼=None, 금액=None):
     month = f"{int(month):02d}"
     with get_connection() as conn:
+        print("🛠️ [DEBUG] update_step_status() 호출됨")
+        print("    - site:", site)
+        print("    - year:", year)
+        print("    - month:", month)
+        print("    - cost_type:", cost_type)
+        print("    - step_no:", step_no)
+        print("    - 상태:", 상태)
+        print("    - 금액컬럼:", 금액컬럼)
+        print("    - 금액:", 금액)
+
+        conn.execute('''
+            INSERT OR IGNORE INTO 절차상태
+            (현장명, 연도, 월, 비용유형, 단계번호, 작업내용, 담당부서)
+            VALUES (?, ?, ?, ?, ?, '', '')
+        ''', (site, year, month, cost_type, step_no))
+
         if 금액컬럼:
-            conn.execute(f'''
+            result = conn.execute(f'''
                 UPDATE 절차상태
                 SET 상태=?, {금액컬럼}=?
                 WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
             ''', (상태, 금액, site, year, month, cost_type, step_no))
+            print(f"🧪 [DEBUG] DB UPDATE rowcount: {result.rowcount}")
         else:
             conn.execute('''
                 UPDATE 절차상태
                 SET 상태=?
                 WHERE 현장명=? AND 연도=? AND 월=? AND 비용유형=? AND 단계번호=?
             ''', (상태, site, year, month, cost_type, step_no))
+
         conn.commit()
 
 def activate_next_step(site, year, month, cost_type, current_step_no):
