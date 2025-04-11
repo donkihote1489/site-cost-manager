@@ -34,7 +34,7 @@ def format_unit(value):
 def summary_dashboard():
     rows = fetch_summary_data()
     if not rows:
-        st.warning("📭 아직 등록된 절차 상태 데이터가 없습니다. 좌측에서 절차를 먼저 입력해주세요.")
+        st.info("📭 아직 입력된 비용 데이터가 없습니다.")
         return
 
     df = pd.DataFrame(rows, columns=["현장명", "연도","월", "기성금", "노무비", "투입비"])
