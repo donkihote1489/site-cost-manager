@@ -3,6 +3,7 @@ from datetime import datetime
 from auth import login_view, check_login
 from db import init_db
 from procedure import procedure_flow_view, get_procedure_flow, save_state_to_file
+st.write("📡 fetch_summary_data() 호출됨")
 
 st.set_page_config(page_title="현장비용 관리 시스템", layout="wide")
 st.title("🏗️ 관수이앤씨 현장비용 관리 시스템")
