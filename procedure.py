@@ -4,7 +4,7 @@ import json
 import os
 import smtplib
 from email.mime.text import MIMEText
-from db import update_step_status
+from db import update_step_status, get_connection
 
 SAVE_PATH = "절차상태저장.json"
 
