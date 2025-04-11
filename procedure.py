@@ -104,18 +104,38 @@ def procedure_flow_view(site, year, month, cost_type):
     state = st.session_state.절차상태[key]
     steps = get_procedure_flow()[cost_type]
 
-    st.subheader(f"📌 비용유형: {cost_type}")   
+    st.subheader(f"📌 비용유형: {cost_type}")
     st.header("📋 절차 진행 현황")
     current_index = state["current_step"] - 1
 
     if current_index >= len(steps):
         st.success("🎉 모든 단계가 완료되었습니다.")
+
+        if st.session_state.get("email_enabled", True):
+            subject = f"[완료 알림] '{site}'의 '{cost_type}' 절차 전체 완료"
+            body = f"""{site} 현장의 비용유형 '{cost_type}'에 대한 모든 절차가 완료되었습니다.
+
+- 연도: {year}
+- 월: {month}
+- 비용유형: {cost_type}
+"""
+            for dept, to_email in DEPARTMENT_EMAILS.items():
+                send_email(to_email, subject, body)
+
         return
 
-    current_step, 담당부서 = steps[current_index]
-    step_label = f"{current_index+1}. {current_step}"
-    st.subheader(f"📍 현재 단계: {step_label}")
-    st.markdown(f"담당 부서: `{담당부서}`")
+    if current_index >= len(steps):
+        st.markdown("### 📍 **🎉 모든 절차가 완료되었습니다** ✅")   
+        st.markdown("해당 비용유형에 대한 모든 단계가 성공적으로 완료되었습니다.")
+        return
+    else:
+         current_step, 담당부서 = steps[current_index]
+         step_label = f"{current_index+1}. {current_step}"
+         st.subheader(f"📍 현재 단계: {step_label}")
+         st.markdown(f"담당 부서: `{담당부서}`")
+
+    if all(v == "완료" for v in state["status"].values()):
+        st.success("🎉 모든 단계가 완료되었습니다.")
 
     my_role = st.session_state.get("role", "")
     is_authorized = (my_role == 담당부서 or my_role == "관리자")
@@ -141,13 +161,23 @@ def procedure_flow_view(site, year, month, cost_type):
             입력값 = st.number_input(f"💰 {label} 입력", min_value=0, step=100000, value=current_value)
 
             actual_step_no = None
-            for i, (step_label_name, _) in enumerate(steps, start=1):
-                if label in step_label_name:
-                    actual_step_no = i
+            for (cond_type, cond_step), cond_label in COST_INPUT_CONDITIONS.items():
+                if cond_label == label and cond_type == cost_type:
+                    actual_step_no = cond_step
                     break
 
             if st.button(f"💾 {label} 저장"):
                 state["amounts"][label] = 입력값
+
+                steps_all = get_procedure_flow()[cost_type]
+                step_label, step_dept = steps_all[actual_step_no - 1]
+
+                with get_connection() as conn:
+                    conn.execute("""
+                        INSERT OR IGNORE INTO 절차상태
+                        (현장명, 연도, 월, 비용유형, 단계번호, 작업내용, 담당부서)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (site, year, month, cost_type, actual_step_no, step_label, step_dept))
 
                 update_step_status(
                     site=site,
@@ -186,11 +216,9 @@ def procedure_flow_view(site, year, month, cost_type):
                 state["current_step"] += 1
                 save_state_to_file()
 
-                # 📧 이메일 알림 전송
                 next_step, next_dept = steps[state["current_step"] - 1]
                 to_email = DEPARTMENT_EMAILS.get(next_dept)
                 if to_email and st.session_state.get("email_enabled", True):
-
                     subject = f"[알림] '{site}' 현장 절차 알림"
                     body = f"""{site} 현장의 '{current_step}' 단계가 완료되었습니다.\n\n귀 부서에서 담당하는 다음 단계는 '{next_step}'입니다.\n\n- 연도: {year} / 월: {month}\n- 비용유형: {cost_type}"""
                     send_email(to_email, subject, body)
@@ -198,6 +226,18 @@ def procedure_flow_view(site, year, month, cost_type):
                 st.rerun()
             else:
                 st.success("🎉 모든 단계가 완료되었습니다.")
+                if st.session_state.get("email_enabled", True):
+                    subject = f"[완료 알림] '{site}'의 '{cost_type}' 절차 전체 완료"
+                    body = f"""{site} 현장의 비용유형 '{cost_type}'에 대한 모든 절차가 완료되었습니다.
+
+- 연도: {year}
+- 월: {month}
+- 비용유형: {cost_type}
+"""
+                    for dept, to_email in DEPARTMENT_EMAILS.items():
+                        send_email(to_email, subject, body)
+
+                save_state_to_file()
                 st.rerun()
     else:
         st.button("다음 단계로 이동", disabled=True)
