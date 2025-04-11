@@ -27,7 +27,7 @@ st.sidebar.checkbox("📧 이메일 알림 전송", value=True, key="email_enabl
 
 # --- 📂 입력 파라미터 선택 영역 ---
 st.sidebar.markdown("---")
-st.sidebar.header("📂 입력 파라미터 선택")
+st.sidebar.header("📂 입력 ")
 
 sites = ["화태백야", "제3연륙교"]
 site = st.sidebar.selectbox("현장명", sites)
