@@ -71,13 +71,12 @@ def is_valid_inputs():
 
 st.markdown("---")
 
-tab1, tab2 = st.tabs(["🚦 절차 진행", "📊 요약 리포트"])
-with tab1:
-    if is_valid_inputs():
-        procedure_flow_view(site, year, month, cost_type)
-with tab2:
-    summary_dashboard()
+if is_valid_inputs():
+    procedure_flow_view(site, year, month, cost_type)
 
 st.markdown("---")
 
-
+if st.checkbox("📊 결과 리포트 보기"):
+    with st.container():
+        from dashboard import summary_dashboard
+        summary_dashboard()
