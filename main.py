@@ -27,7 +27,7 @@ st.sidebar.checkbox("📧 이메일 알림 전송", value=True, key="email_enabl
 
 # --- 📂 입력 파라미터 선택 영역 ---
 st.sidebar.markdown("---")
-st.sidebar.header("📂 입력 ")
+st.sidebar.header("📂 입력 파라미터 선택")
 
 sites = ["화태백야", "제3연륙교"]
 site = st.sidebar.selectbox("현장명", sites)
@@ -71,12 +71,13 @@ def is_valid_inputs():
 
 st.markdown("---")
 
-if is_valid_inputs():
-    procedure_flow_view(site, year, month, cost_type)
+tab1, tab2 = st.tabs(["🚦 절차 진행", "📊 요약 리포트"])
+with tab1:
+    if is_valid_inputs():
+        procedure_flow_view(site, year, month, cost_type)
+with tab2:
+    summary_dashboard()
 
 st.markdown("---")
 
-if st.checkbox("📊 결과 리포트 보기"):
-    with st.container():
-        from dashboard import summary_dashboard
-        summary_dashboard()
+
